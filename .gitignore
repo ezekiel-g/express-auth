@@ -1,0 +1,72 @@
+# Node.js
+node_modules/
+package-lock.json
+yarn.lock
+pnpm-lock.yaml
+.pnpm-debug.log
+
+# Environment variables
+.env
+.env.*
+!.env.example
+
+# Build output
+dist/
+build/
+.vite/
+.cache/
+tmp/
+temp/
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+# Editor / IDE
+.vscode/
+.idea/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+*.code-workspace
+!.vscode/extensions.json
+
+# OS-specific
+.DS_Store
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+.directory
+Icon?
+._*
+*~
+
+# Testing & Coverage
+coverage/
+.nyc_output/
+.vitest/
+jest.config.js
+coverage-final.json
+
+# TypeScript
+*.tsbuildinfo
+tsconfig.tsbuildinfo
+*.d.ts
+
+# Lint & Formatting
+.eslintcache
+.prettiercache
+
+# Miscellaneous
+*.local
+*.tgz
+*.pem
+*.key
+*.crt
