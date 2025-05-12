@@ -1,8 +1,11 @@
+import globals from 'globals'
+
 const lintConfig = [
     {
-        files: ['**/*.js', '**/*.jsx'],
+        files: ['**/*.{js,jsx,ts,tsx}'],
         languageOptions: {
-            ecmaVersion: 2021,
+            ecmaVersion: 'latest',
+            globals: globals.node,
             sourceType: 'module'
         },
         rules: {
