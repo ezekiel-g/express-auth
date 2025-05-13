@@ -3,7 +3,7 @@ import { Link, useNavigate, useLocation } from 'react-router-dom'
 import useAuthContext from '../context/useAuthContext'
 
 const SignInPage = ({ backEndUrl }) => {
-    const { setUser } = useAuthContext()
+    const { user, setUser } = useAuthContext()
     const [email, setEmail] = useState('')
     const [password, setPassword] = useState('')
     const [errors, setErrors] = useState([])
@@ -47,6 +47,10 @@ const SignInPage = ({ backEndUrl }) => {
             console.error(`Error: ${error.message}`)
         }
     }
+
+    useEffect(() => {
+        if (user) navigate('/')
+    }, [user, navigate])
 
     useEffect(() => {
         if (location.state?.message) {

@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
 import useAuthContext from '../context/useAuthContext'
+import validateUser from '../utilities/validateUser.js'
 
 const RegisterPage = ({ backEndUrl }) => {
     const { user } = useAuthContext()
@@ -10,20 +11,20 @@ const RegisterPage = ({ backEndUrl }) => {
     const [errors, setErrors] = useState([])
     const navigate = useNavigate()
 
-    useEffect(() => {
-        if (user) {
-            navigate('/')
-        }
-    }, [user, navigate])
-
     const handleSubmit = async event => {
         event.preventDefault()
         setErrors([])
 
         const newErrors = []
-        if (username.trim() === '') newErrors.push('Username required')
-        if (email.trim() === '') newErrors.push('Email address required')
-        if (!password) newErrors.push('Password required')
+
+        const usernameValid = validateUser.validateUsername(username)
+        if (!usernameValid.valid) newErrors.push(usernameValid.message)
+
+        const emailValid = validateUser.validateEmail(email)
+        if (!emailValid.valid) newErrors.push(emailValid.message)
+
+        const passwordValid = validateUser.validatePassword(password)
+        if (!passwordValid.valid) newErrors.push(passwordValid.message)
 
         if (newErrors.length > 0) {
             setErrors(newErrors)
@@ -54,6 +55,10 @@ const RegisterPage = ({ backEndUrl }) => {
             console.error(`Error: ${error.message}`)
         }
     }
+
+    useEffect(() => {
+        if (user) navigate('/')
+    }, [user, navigate])
 
     let errorDisplay = <></>
 
