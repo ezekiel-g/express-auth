@@ -20,6 +20,9 @@ const handleDbError = (response, error) => {
     }
 
     console.error(`Error ${error.code}: ${error.message}`)
+
+    if (error.stack) console.error(error.stack)
+
     return response.status(statusCode).json({ message })
 }
 
