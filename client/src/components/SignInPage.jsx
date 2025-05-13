@@ -103,7 +103,7 @@ const SignInPage = ({ backEndUrl }) => {
                         onChange={event => setEmail(event.target.value)}
                     />
                 </div>
-                <div className="mb-4">
+                <div className="mb-3">
                     <label htmlFor="password" className="form-label">
                         Password
                     </label>
@@ -114,7 +114,7 @@ const SignInPage = ({ backEndUrl }) => {
                         value={password}
                         onChange={event => setPassword(event.target.value)}
                     />
-                </div>
+                </div><br />
                 <button 
                     type="submit"
                     className="btn btn-primary mb-3 rounded-0"
