@@ -1,7 +1,7 @@
 const validateEmployee = {
     validateUsername: username => {
         if (!username) {
-            return { valid: false, message: 'Username is required' }
+            return { valid: false, message: 'Username required' }
         }
         const usernameRegex = /^[a-zA-Z_][a-zA-Z0-9._]{2,19}$/
         if (!usernameRegex.test(username)) {
@@ -19,7 +19,7 @@ const validateEmployee = {
 
     validateEmail: email => {
         if (!email) {
-            return { valid: false, message: 'Email address is required' }
+            return { valid: false, message: 'Email address required' }
         }
         const emailRegex = /^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$/
         if (!emailRegex.test(email)) {
@@ -29,7 +29,7 @@ const validateEmployee = {
                     Email address must contain only letters, numbers, periods,
                     underscores, hyphens, plus signs and percent signs before
                     the "@", a domain name after the "@" and a valid domain
-                    extension (e.g., ".com", ".net", ".org") of at least two
+                    extension (e.g. ".com", ".net", ".org") of at least two
                     letters
                 `
             }
@@ -39,7 +39,7 @@ const validateEmployee = {
 
     validatePassword: password => {
         if (!password) {
-            return { valid: false, message: 'Password is required' }
+            return { valid: false, message: 'Password required' }
         }
         const passwordRegex =
             /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[!@#$%^&*]).{16,}$/
