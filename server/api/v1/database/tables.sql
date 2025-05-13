@@ -8,6 +8,6 @@ CREATE TABLE users (
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         ON UPDATE CURRENT_TIMESTAMP NOT NULL,
 
-    CHECK (username REGEXP '^[a-zA-Z_][a-zA-Z0-9._]*$'),
+    CHECK (username REGEXP '^[a-zA-Z_][a-zA-Z0-9._]{2,19}$'),
     CHECK (email REGEXP '^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$')
 );
