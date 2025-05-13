@@ -3,3 +3,8 @@
     background-color: #212121;
     font-family: Arial, sans-serif;
 }
+
+input::placeholder, textarea::placeholder {
+    color: #909090;
+    font-style: italic;
+}

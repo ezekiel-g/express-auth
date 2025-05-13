@@ -51,7 +51,7 @@ const SignInPage = ({ backEndUrl }) => {
             const data = await response.json()
 
             if (!response.ok) {
-                setErrors([data.message || 'Sign in failed'])
+                setErrors([data.message || 'Sign-in failed'])
                 return
             }
 
@@ -113,7 +113,9 @@ const SignInPage = ({ backEndUrl }) => {
                         value={password}
                         onChange={event => setPassword(event.target.value)}
                     />
-                </div><br />
+                </div>
+                
+                <br />
                 <button 
                     type="submit"
                     className="btn btn-primary mb-3 rounded-0"

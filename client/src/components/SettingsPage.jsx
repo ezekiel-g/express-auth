@@ -8,6 +8,7 @@ const SettingsPage = ({ backEndUrl }) => {
     const [username, setUsername] = useState('')
     const [email, setEmail] = useState('')
     const [password, setPassword] = useState('')
+    const [confirmedPassword, setConfirmedPassword] = useState('')
     const [editing, setEditing] = useState(false)
     const [flashMessages, setFlashMessages] = useState([])
     const [errors, setErrors] = useState([])
@@ -21,6 +22,7 @@ const SettingsPage = ({ backEndUrl }) => {
             setUsername(user.username)
             setEmail(user.email)
             setPassword('')
+            setConfirmedPassword('')
         }
     }, [user, navigate])
 
@@ -32,7 +34,7 @@ const SettingsPage = ({ backEndUrl }) => {
         if (!shouldSubmit.current) return
 
         shouldSubmit.current = false
-        
+
         const newErrors = []
 
         const usernameValid = validateUser.validateUsername(username)
@@ -44,6 +46,10 @@ const SettingsPage = ({ backEndUrl }) => {
         if (password && password !== '') {
             const passwordValid = validateUser.validatePassword(password)
             if (!passwordValid.valid) newErrors.push(passwordValid.message)
+        }
+
+        if (password && password !== confirmedPassword) {
+            newErrors.push('Passwords must match')
         }
 
         if (newErrors.length > 0) {
@@ -66,7 +72,7 @@ const SettingsPage = ({ backEndUrl }) => {
 
         try {
             if (!window.confirm('Are you sure you want to update?')) return
-            
+
             const response = await fetch(
                 `${backEndUrl}/api/v1/users/${user.id}`,
                 {
@@ -97,6 +103,7 @@ const SettingsPage = ({ backEndUrl }) => {
                 setUser(Object.assign({}, user, updatedUser))
                 shouldSubmit.current = false
                 setPassword('')
+                setConfirmedPassword('')
                 setFlashMessagesTimeout(newMessages)
             }
         } catch (error) {
@@ -121,15 +128,37 @@ const SettingsPage = ({ backEndUrl }) => {
         setUsername(user?.username)
         setEmail(user?.email)
         setPassword('')
+        setConfirmedPassword('')
         setEditing(false)
         setErrors([])
     }
 
+    let confirmedPasswordDisplay
     let buttonDisplay
     let inputClasses
     let passwordPlaceholder
 
     if (editing) {
+        confirmedPasswordDisplay =
+            <div className="mb-3">
+                <label
+                    htmlFor="confirmedPassword"
+                    className="form-label"
+                >
+                    Password (confirm)
+                </label>
+                <input
+                    type="password"
+                    className="form-control rounded-0"
+                    id="confirmedPassword"
+                    value={confirmedPassword}
+                    onChange={
+                        event =>
+                            setConfirmedPassword(event.target.value)
+                    }
+                    placeholder="Leave blank to keep password unchanged"
+                />
+            </div>            
         buttonDisplay =
             <div>
                 <button 
@@ -148,7 +177,7 @@ const SettingsPage = ({ backEndUrl }) => {
                 </button>
             </div>
         inputClasses = 'form-control rounded-0'
-        passwordPlaceholder = '(Leave blank to keep password unchanged)'
+        passwordPlaceholder = 'Leave blank to keep password unchanged'
     } else {
         buttonDisplay =
             <div>
@@ -233,8 +262,10 @@ const SettingsPage = ({ backEndUrl }) => {
                         disabled={!editing}
                         placeholder={passwordPlaceholder}
                     />
-                </div><br />
+                </div>
+                {confirmedPasswordDisplay}
 
+                <br />
                 {buttonDisplay}
             </form>
         </div>

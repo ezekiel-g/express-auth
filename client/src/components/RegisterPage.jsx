@@ -8,6 +8,7 @@ const RegisterPage = ({ backEndUrl }) => {
     const [username, setUsername] = useState('')
     const [email, setEmail] = useState('')
     const [password, setPassword] = useState('')
+    const [confirmedPassword, setConfirmedPassword] = useState('')
     const [errors, setErrors] = useState([])
     const navigate = useNavigate()
 
@@ -29,6 +30,10 @@ const RegisterPage = ({ backEndUrl }) => {
 
         const passwordValid = validateUser.validatePassword(password)
         if (!passwordValid.valid) newErrors.push(passwordValid.message)
+
+        if (password !== confirmedPassword) {
+            newErrors.push('Passwords must match')
+        }
 
         if (newErrors.length > 0) {
             setErrors(newErrors)
@@ -110,7 +115,24 @@ const RegisterPage = ({ backEndUrl }) => {
                         value={password}
                         onChange={event => setPassword(event.target.value)}
                     />
-                </div><br />
+                </div>
+
+                <div className="mb-3">
+                    <label htmlFor="confirmedPassword" className="form-label">
+                        Password (confirm)
+                    </label>
+                    <input
+                        type="password"
+                        className="form-control rounded-0"
+                        id="confirmedPassword"
+                        value={confirmedPassword}
+                        onChange={
+                            event => setConfirmedPassword(event.target.value)
+                        }
+                    />
+                </div>
+
+                <br />
                 <button 
                     type="submit"
                     className="btn btn-primary mb-3 rounded-0"
