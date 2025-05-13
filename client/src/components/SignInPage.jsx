@@ -11,6 +11,22 @@ const SignInPage = ({ backEndUrl }) => {
     const navigate = useNavigate()
     const location = useLocation()
 
+    useEffect(() => {
+        if (user) navigate('/')
+    }, [user, navigate])
+
+    useEffect(() => {
+        if (location.state?.message) {
+            setFlashMessage(location.state.message)
+
+            const timer = setTimeout(() => {
+                setFlashMessage('')
+            }, 3000)
+
+            return () => clearTimeout(timer)
+        }
+    }, [location.state])
+
     const handleSubmit = async event => {
         event.preventDefault()
         setErrors([])
@@ -32,7 +48,6 @@ const SignInPage = ({ backEndUrl }) => {
                 body: JSON.stringify({ email, password }),
                 credentials: 'include'
             })
-
             const data = await response.json()
 
             if (!response.ok) {
@@ -47,22 +62,6 @@ const SignInPage = ({ backEndUrl }) => {
             console.error(`Error: ${error.message}`)
         }
     }
-
-    useEffect(() => {
-        if (user) navigate('/')
-    }, [user, navigate])
-
-    useEffect(() => {
-        if (location.state?.message) {
-            setFlashMessage(location.state.message)
-
-            const timer = setTimeout(() => {
-                setFlashMessage('')
-            }, 3000)
-
-            return () => clearTimeout(timer)
-        }
-    }, [location.state])
 
     let flashMessageDisplay = <></>
 

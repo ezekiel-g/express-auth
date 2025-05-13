@@ -11,6 +11,10 @@ const RegisterPage = ({ backEndUrl }) => {
     const [errors, setErrors] = useState([])
     const navigate = useNavigate()
 
+    useEffect(() => {
+        if (user) navigate('/')
+    }, [user, navigate])
+
     const handleSubmit = async event => {
         event.preventDefault()
         setErrors([])
@@ -38,7 +42,6 @@ const RegisterPage = ({ backEndUrl }) => {
                 body: JSON.stringify({ username, email, password }),
                 credentials: 'include'
             })
-
             const data = await response.json()
 
             if (!response.ok) {
@@ -49,16 +52,11 @@ const RegisterPage = ({ backEndUrl }) => {
             navigate('/sign-in', { state: {
                 message: 'Registered successfully — please sign in'
             } })
-
         } catch (error) {
             setErrors(['Server connection error'])
             console.error(`Error: ${error.message}`)
         }
     }
-
-    useEffect(() => {
-        if (user) navigate('/')
-    }, [user, navigate])
 
     let errorDisplay = <></>
 
