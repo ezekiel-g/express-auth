@@ -2,8 +2,9 @@ import { useState, useEffect, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import useAuthContext from '../context/useAuthContext'
 import validateUser from '../utilities/validateUser.js'
+import fetchWithRefresh from '../utilities/fetchWithRefresh.js'
 
-const SettingsPage = ({ backEndUrl }) => {
+const SettingsPage = () => {
     const { user, setUser } = useAuthContext()
     const [username, setUsername] = useState('')
     const [email, setEmail] = useState('')
@@ -73,13 +74,12 @@ const SettingsPage = ({ backEndUrl }) => {
         try {
             if (!window.confirm('Are you sure you want to update?')) return
 
-            const response = await fetch(
-                `${backEndUrl}/api/v1/users/${user.id}`,
+            const response = await fetchWithRefresh(
+                `/api/v1/users/${user.id}`,
                 {
                     method: 'PUT',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(updatedUser),
-                    credentials: 'include'
+                    body: JSON.stringify(updatedUser)
                 }
             )
             const data = await response.json()

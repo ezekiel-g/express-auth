@@ -43,10 +43,7 @@ const App = () => {
                     path="/sign-in"
                     element={<SignInPage backEndUrl={backEndUrl} />}
                 />
-                <Route
-                    path="/settings"
-                    element={<SettingsPage backEndUrl={backEndUrl} />}
-                />
+                <Route path="/settings" element={<SettingsPage />} />
             </Routes>
         </>
     )
