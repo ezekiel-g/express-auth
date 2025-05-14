@@ -1,6 +1,7 @@
 import bcryptjs from 'bcryptjs'
 import jsonwebtoken from 'jsonwebtoken'
 import dbConnection from '../database/database.js'
+import validateSession from '../utilities/validateSession.js'
 
 const jwtSecret = process.env.JWT_SECRET
 
@@ -10,23 +11,9 @@ if (!jwtSecret) {
 
 const readSession = async (request, response) => {
     try {
-        const accessToken = request.cookies.accessToken
-        if (!accessToken) {
-            return response.status(200).json({ message: 'Not signed in' })
-        }
+        const decryptedToken = validateSession(request)
 
-        let decryptedToken
-
-        try {
-            decryptedToken = jsonwebtoken.verify(accessToken, jwtSecret)
-        } catch (error) {
-            if (error instanceof jsonwebtoken.JsonWebTokenError) {
-                return response.status(401).json({
-                    message: 'Invalid or expired token'
-                })
-            }
-            throw error
-        }
+        if (decryptedToken === null) return
 
         const [rows] = await dbConnection.execute(
             `

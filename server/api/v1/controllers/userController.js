@@ -1,6 +1,7 @@
 import bcryptjs from 'bcryptjs'
 import dbConnection from '../database/database.js'
 import handleDbError from '../utilities/handleDbError.js'
+import validateSession from '../utilities/validateSession.js'
 
 const queries = {
     readUsers: `
@@ -20,6 +21,11 @@ const queries = {
     deleteUser: `
         DELETE FROM users WHERE id = ?;
     `
+}
+const jwtSecret = process.env.JWT_SECRET
+
+if (!jwtSecret) {
+    throw new Error('JWT_SECRET is not defined in environment variables')
 }
 
 const readUsers = async (request, response) => {
@@ -80,6 +86,8 @@ const updateUser = async (request, response) => {
     const { username, email, password, role } = request.body
 
     try {
+        validateSession(request, id)
+
         const [oldDetails] = await dbConnection.execute(queries.readUser, [id])
 
         if (oldDetails.length === 0) {
@@ -123,6 +131,8 @@ const deleteUser = async (request, response) => {
     const { id } = request.params
 
     try {
+        validateSession(request, id)
+
         const [result] = await dbConnection.execute(queries.deleteUser, [id])
 
         if (result.affectedRows === 0) {

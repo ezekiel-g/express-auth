@@ -44,8 +44,7 @@ const RegisterPage = ({ backEndUrl }) => {
             const response = await fetch(`${backEndUrl}/api/v1/users`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ username, email, password }),
-                credentials: 'include'
+                body: JSON.stringify({ username, email, password })
             })
             const data = await response.json()
 
