@@ -16,15 +16,14 @@ const corsOptions = {
     methods: ['GET', 'POST', 'PUT', 'DELETE'],
     credentials: true
 }
+const __filename = fileURLToPath(import.meta.url)
+const __dirname = path.dirname(__filename)
 
 app.use(express.json())
 app.use(cors(corsOptions))
 app.use(cookieParser())
 app.use('/api/v1/users', userRoutes)
 app.use('/api/v1/sessions', sessionRoutes)
-
-const __filename = fileURLToPath(import.meta.url)
-const __dirname = path.dirname(__filename)
 
 if (process.env.NODE_ENV === 'production') {
     const clientDistPath = path.join(__dirname, '../client/dist')
