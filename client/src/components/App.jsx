@@ -1,11 +1,12 @@
 import { useEffect } from 'react'
-import { Routes, Route } from 'react-router-dom'
-import useAuthContext from '../context/useAuthContext'
+import { Routes, Route, Navigate } from 'react-router-dom'
+import useAuthContext from '../contexts/useAuthContext.js'
 import Navbar from './Navbar'
 import MainPage from './MainPage'
 import RegisterPage from './RegisterPage'
 import SignInPage from './SignInPage'
 import SettingsPage from './SettingsPage'
+import ConfirmationPage from './ConfirmationPage'
 
 const App = () => {
     const { setUser } = useAuthContext()
@@ -32,7 +33,7 @@ const App = () => {
 
     return (
         <>
-            <Navbar backEndUrl={backEndUrl} />
+            <Navbar />
             <Routes>
                 <Route path="/" element={<MainPage />} />
                 <Route
@@ -44,6 +45,11 @@ const App = () => {
                     element={<SignInPage backEndUrl={backEndUrl} />}
                 />
                 <Route path="/settings" element={<SettingsPage />} />
+                <Route
+                    path="/confirm"
+                    element={<ConfirmationPage backEndUrl={backEndUrl} />}
+                />
+                <Route path="*" element={<Navigate to="/" replace />} />
             </Routes>
         </>
     )

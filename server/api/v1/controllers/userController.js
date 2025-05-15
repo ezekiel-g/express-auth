@@ -147,10 +147,39 @@ const deleteUser = async (request, response) => {
     }    
 }
 
+const verifyPassword = async (request, response) => {
+    const { id } = request.params
+    const { password } = request.body
+
+    try {
+        validateSession(request, id)
+
+        const [rows] = await dbConnection.execute(queries.readUser, [id])
+
+        if (rows.length === 0) {
+            return response.status(404).json({ message: 'User not found' })
+        }
+
+        const user = rows[0]
+        const isPasswordValid = await bcryptjs.compare(password, user.password)
+
+        if (!isPasswordValid) {
+            return response.status(401).json({ message: 'Invalid password' })
+        }
+
+        return response.status(200).json({
+            message: 'Password verified successfully'
+        })
+    } catch (error) {
+        return handleDbError(response, error)
+    }
+}
+
 export default {
     readUsers,
     readUser,
     createUser,
     updateUser,
-    deleteUser
+    deleteUser,
+    verifyPassword
 }

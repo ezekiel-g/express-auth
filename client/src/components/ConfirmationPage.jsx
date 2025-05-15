@@ -1,0 +1,121 @@
+import { useState, useEffect, useRef } from 'react'
+import { useNavigate, useLocation } from 'react-router-dom'
+import useAuthContext from '../contexts/useAuthContext.js'
+import messageUtility from '../utilities/messageUtility.jsx'
+
+const ConfirmationPage = ({ backEndUrl }) => {
+    const { user, setUser, setCanEditSettings } = useAuthContext()
+    const [password, setPassword] = useState('')
+    const [successMessages, setSuccessMessages] = useState([])
+    const [errorMessages, setErrorMessages] = useState([])
+    const navigate = useNavigate()
+    const location = useLocation()
+    const isSigningOut = useRef(false)
+    const confirmationType = location.state?.confirmationType
+    
+    useEffect(() => {
+        if (!confirmationType) navigate('/')
+        if (!user && !isSigningOut.current) navigate('/')
+    }, [confirmationType, user, navigate])
+
+    let question = ''
+    let inputDisplay = null
+    let submitButtonName = ''
+    let confirmFunction = () => {}
+    let cancelFunction = () => {}
+
+    if (confirmationType === 'enterPassword') {
+        question = 'Enter password to continue'
+        inputDisplay = (
+            <div className="mb-3">
+                <input
+                    type="password"
+                    className="form-control rounded-0"
+                    id="password"
+                    value={password}
+                    onChange={event => setPassword(event.target.value)}
+                />
+            </div>
+        )
+        submitButtonName = 'Submit'
+
+        confirmFunction = async () => {
+            const response = await fetch(
+                `${backEndUrl}/api/v1/users/${user.id}/verify-password`,
+                {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ password }),
+                    credentials: 'include'
+                }
+            )
+
+            if (!response.ok) {
+                const data = await response.json()
+                setErrorMessages(
+                    [data.message || 'Password verification failed']
+                )
+                return
+            }
+
+            setErrorMessages([])
+            setCanEditSettings(true)
+            navigate('/settings', { state: { fromConfirmationPage: true } })
+        }
+
+        cancelFunction = () => navigate('/settings')
+    } else if (confirmationType === 'signOut') {
+        question = 'Sign out?'
+        submitButtonName = 'Confirm'
+
+        confirmFunction = async () => {
+            try {
+                await fetch(`${backEndUrl}/api/v1/sessions`, {
+                    method: 'DELETE',
+                    credentials: 'include'
+                })
+            } catch (error) {
+                console.error(`Error: ${error.message}`)
+            }
+
+            setUser(null)
+            isSigningOut.current = true
+            setSuccessMessages(['Signed out successfully'])
+            setTimeout(() => { navigate('/') }, 1000)
+        }
+
+        cancelFunction = () => navigate('/')
+    }
+
+    const successMessageDisplay =
+        messageUtility.displaySuccessMessages(successMessages)
+    const errorMessageDisplay =
+        messageUtility.displayErrorMessages(errorMessages)
+
+    return (
+        <div className="container mt-5 px-5">
+            {successMessageDisplay}
+            {errorMessageDisplay}
+            <h3 className="mb-4">{question}</h3>
+            {inputDisplay}
+            <div>
+                <button
+                    type="submit"
+                    className="btn btn-primary mb-3 rounded-0 me-2"
+                    onClick={() => confirmFunction()}
+                >
+                    {submitButtonName}
+                </button>
+                <button
+                    type="button"
+                    className="btn btn-secondary mb-3 rounded-0"
+                    onClick={() => cancelFunction()}
+                >
+                    Cancel
+                </button>
+            </div>
+        </div>
+    )
+}
+
+export default ConfirmationPage
