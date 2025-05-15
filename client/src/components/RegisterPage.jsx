@@ -52,13 +52,17 @@ const RegisterPage = ({ backEndUrl }) => {
             const data = await response.json()
 
             if (!response.ok) {
-                setErrorMessages([data.message || 'Registration failed'])
+                if (Array.isArray(data.messages)) {
+                    setErrorMessages(data.messages)
+                } else {
+                    setErrorMessages([data.message || 'Registration failed'])
+                }
                 return
             }
 
             isRegistering.current = true
             setSuccessMessages(['Registered successfully — please sign in'])
-            setTimeout(() => { navigate('/sign-in') }, 1000)
+            setTimeout(() => { navigate('/sign-in') }, 2000)
         } catch (error) {
             setErrorMessages(['Server connection error'])
             console.error(`Error: ${error.message}`)

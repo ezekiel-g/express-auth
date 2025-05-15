@@ -4,12 +4,10 @@ import handleDbError from '../utilities/handleDbError.js'
 import validateSession from '../utilities/validateSession.js'
 
 const queries = {
-    readUsers: `
-        SELECT * FROM users;
-    `,
-    readUser: `
-        SELECT * FROM users WHERE id = ?;
-    `,
+    readUsers: 'SELECT * FROM users;',
+    readUser: 'SELECT * FROM users WHERE id = ?;',
+    readUserUsername: 'SELECT id FROM users WHERE username = ?;',
+    readUserEmail: 'SELECT id FROM users WHERE email = ?;',
     createUser: `
         INSERT INTO users (username, email, password, role) VALUES (?, ?, ?, ?);
     `,
@@ -18,9 +16,8 @@ const queries = {
         SET username = ?, email = ?, password = ?, role = ?
         WHERE id = ?;
     `,
-    deleteUser: `
-        DELETE FROM users WHERE id = ?;
-    `
+    deleteUser: 'DELETE FROM users WHERE id = ?;'
+    
 }
 const jwtSecret = process.env.JWT_SECRET
 
@@ -60,6 +57,26 @@ const createUser = async (request, response) => {
     if (!role) { role = 'user' }
 
     try {
+        const duplicateEntryErrors = []
+        const [existingUsername] = await dbConnection.execute(
+            queries.readUserUsername,
+            [username]
+        )
+        const [existingEmail] = await dbConnection.execute(
+            queries.readUserEmail,
+            [email]
+        )
+
+        if (existingUsername.length > 0) {
+            duplicateEntryErrors.push('Username taken')
+        }
+        if (existingEmail.length > 0) {
+            duplicateEntryErrors.push('Email address taken')
+        }
+        if (duplicateEntryErrors.length > 0) {
+            return response.status(400).json({ messages: duplicateEntryErrors })
+        }
+
         const salt = await bcryptjs.genSalt(10)
         const hashedPassword = await bcryptjs.hash(password, salt)
         const [result] = await dbConnection.execute(
