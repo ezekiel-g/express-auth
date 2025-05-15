@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useCallback } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
 import useAuthContext from '../contexts/auth/useAuthContext.js'
 import validateUser from '../utilities/validateUser.js'
@@ -16,30 +16,14 @@ const SettingsPage = () => {
     const [email, setEmail] = useState('')
     const [password, setPassword] = useState('')
     const [reEnteredPassword, setReEnteredPassword] = useState('')
+    const [pendingUserUpdate, setPendingUserUpdate] = useState({})
     const [successMessages, setSuccessMessages] = useState([])
     const [errorMessages, setErrorMessages] = useState([])
     const shouldSubmit = useRef(false)
     const navigate = useNavigate()
     const location = useLocation()
 
-    useEffect(() => {
-        if (!user) {
-            navigate('/sign-in')
-        } else {
-            setUsername(user.username)
-            setEmail(user.email)
-            setPassword('')
-            setReEnteredPassword('')
-        }
-
-        if (!location.state?.fromConfirmationPage && canEditSettings) {
-            setCanEditSettings(false)
-        }
-
-        setErrorMessages([])
-    }, [user, navigate, location.state, canEditSettings, setCanEditSettings])
-
-    const handleSubmit = async event => {
+    const handleFirstSubmit = async event => {
         event.preventDefault()
         setSuccessMessages([])
         setErrorMessages([])
@@ -60,28 +44,37 @@ const SettingsPage = () => {
             const passwordValid = validateUser.validatePassword(password)
             if (!passwordValid.valid) newErrors.push(passwordValid.message)
         }
-
         if (password && password !== reEnteredPassword) {
             newErrors.push('Passwords must match')
         }
-
         if (newErrors.length > 0) {
             setErrorMessages(newErrors)
             return
         }
 
-        const updatedUser = {}
+        const updatedUserDetails = {}
 
-        if (username !== user?.username) updatedUser.username = username
-        if (email !== user?.email) updatedUser.email = email
+        if (username !== user?.username) updatedUserDetails.username = username
+        if (email !== user?.email) updatedUserDetails.email = email
         if (password && password !== '') {
-            updatedUser.password = password
+            updatedUserDetails.password = password
         }
-
-        if (Object.keys(updatedUser).length === 0) {
+        if (Object.keys(updatedUserDetails).length === 0) {
             setErrorMessages(['No changes detected'])
             return
         }
+        
+        setPendingUserUpdate(updatedUserDetails)
+        navigate('/confirm', {
+            state: {
+                confirmationType: 'confirmUserUpdate',
+                updatedUserDetails
+            }
+        })
+    }
+
+    const handleSecondSubmit = useCallback(async updated => {
+        const updatedUser = Object.assign({}, user, updated)
 
         try {
             const response = await fetchWithRefresh(
@@ -100,17 +93,17 @@ const SettingsPage = () => {
             } else {
                 const newMessages = []
 
-                if (updatedUser.username) {
+                if (updated.username) {
                     newMessages.push('Username updated successfully')
                 }
-                if (updatedUser.email) {
+                if (updated.email) {
                     newMessages.push('Email address updated successfully')
                 }
-                if (updatedUser.password) {
+                if (updated.password) {
                     newMessages.push('Password updated successfully')
                 }
 
-                setUser(Object.assign({}, user, updatedUser))
+                setUser(updatedUser)
                 shouldSubmit.current = false
                 setPassword('')
                 setReEnteredPassword('')
@@ -125,7 +118,47 @@ const SettingsPage = () => {
         }
 
         setCanEditSettings(false)
-    }
+        setPendingUserUpdate({})
+        navigate(location.pathname, { replace: true })
+    }, [
+        user,
+        setUser,
+        setCanEditSettings,
+        navigate,
+        location.pathname        
+    ])
+
+    useEffect(() => {
+        if (!user) {
+            navigate('/sign-in')
+            return
+        } else {
+            setUsername(user.username)
+            setEmail(user.email)
+            setPassword('')
+            setReEnteredPassword('')
+        }
+        
+        if (!location.state?.confirmedPassword && canEditSettings) {
+            setCanEditSettings(false)
+        }
+
+        if (location.state?.confirmedUserUpdate &&
+            location.state?.updatedUserDetails
+        ) {
+            handleSecondSubmit(location.state?.updatedUserDetails)
+        }
+
+        setErrorMessages([])
+    }, [
+        user,
+        navigate,
+        location,
+        canEditSettings,
+        setCanEditSettings,
+        pendingUserUpdate,
+        handleSecondSubmit
+    ])
 
     const goToConfirmationPage = confirmationType => {
         navigate('/confirm', { state: { confirmationType: confirmationType } })
@@ -214,7 +247,7 @@ const SettingsPage = () => {
             {successMessageDisplay}
             {errorMessageDisplay}
             <h2 className="mb-4">Settings</h2>
-            <form onSubmit={handleSubmit}>
+            <form onSubmit={handleFirstSubmit}>
                 <div className="mb-3">
                     <label htmlFor="username" className="form-label">
                         Username

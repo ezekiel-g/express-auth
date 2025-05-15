@@ -3,11 +3,13 @@ const messageUtility = {
         if (messages.length === 0) {
             return null
         } else {
-            return messages.map((message, index) => (
+            const messageDivs = messages.map((message, index) => (
                 <div key={index} className="alert alert-success rounded-0">
                     {message}
                 </div>
             ))
+            
+            return messageDivs
         }
     },
 
@@ -15,11 +17,13 @@ const messageUtility = {
         if (messages.length === 0) {
             return null
         } else {
-            return messages.map((message, index) => (
+            const messageDivs = messages.map((message, index) => (
                 <div key={index} className="alert alert-danger rounded-0">
                     {message}
                 </div>
             ))
+
+            return messageDivs
         }
     },
 

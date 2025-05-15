@@ -19,14 +19,14 @@ const ConfirmationPage = ({ backEndUrl }) => {
     }, [confirmationType, user, navigate])
 
     let question = ''
-    let inputDisplay = null
-    let submitButtonName = ''
+    let contentDisplay = null
+    let submitButtonName = 'Confirm'
     let confirmFunction = () => {}
     let cancelFunction = () => {}
 
     if (confirmationType === 'enterPassword') {
         question = 'Enter password to continue'
-        inputDisplay = (
+        contentDisplay = (
             <div className="mb-3">
                 <input
                     type="password"
@@ -60,7 +60,36 @@ const ConfirmationPage = ({ backEndUrl }) => {
 
             setErrorMessages([])
             setCanEditSettings(true)
-            navigate('/settings', { state: { fromConfirmationPage: true } })
+            navigate('/settings', { state: { confirmedPassword: true } })
+        }
+
+        cancelFunction = () => navigate('/settings')
+    } else if (confirmationType === 'confirmUserUpdate') {
+        question = 'Update the following?'
+        const updatedUserDetails = location.state?.updatedUserDetails || {}
+        contentDisplay = Object.keys(updatedUserDetails).map((field, index) => {
+            let label = ''
+            if (field === 'email') {
+                label = 'Email address'
+            } else if (field === 'password') {
+                label = 'Password'
+            } else if (field === 'username') {
+                label = 'Username'
+            } else {
+                label = field
+            }
+
+            return <div key={index} className="mb-1">{label}</div>
+        })
+        contentDisplay = <div>{contentDisplay}<br /></div>
+
+        confirmFunction = () => {
+            navigate('/settings', {
+                state: {
+                    confirmedUserUpdate: true,
+                    updatedUserDetails
+                }
+            })
         }
 
         cancelFunction = () => navigate('/settings')
@@ -97,7 +126,7 @@ const ConfirmationPage = ({ backEndUrl }) => {
             {successMessageDisplay}
             {errorMessageDisplay}
             <h3 className="mb-4">{question}</h3>
-            {inputDisplay}
+            {contentDisplay}
             <div>
                 <button
                     type="submit"
