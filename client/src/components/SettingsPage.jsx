@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
-import useAuthContext from '../contexts/useAuthContext.js'
+import useAuthContext from '../contexts/auth/useAuthContext.js'
 import validateUser from '../utilities/validateUser.js'
 import fetchWithRefresh from '../utilities/fetchWithRefresh.js'
 import messageUtility from '../utilities/messageUtility.jsx'

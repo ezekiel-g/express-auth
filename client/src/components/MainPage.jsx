@@ -1,4 +1,4 @@
-import useAuthContext from '../contexts/useAuthContext.js'
+import useAuthContext from '../contexts/auth/useAuthContext.js'
 
 const MainPage = () => {
     const { user } = useAuthContext()

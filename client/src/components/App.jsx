@@ -1,6 +1,6 @@
 import { useEffect } from 'react'
 import { Routes, Route, Navigate } from 'react-router-dom'
-import useAuthContext from '../contexts/useAuthContext.js'
+import useAuthContext from '../contexts/auth/useAuthContext.js'
 import Navbar from './Navbar'
 import MainPage from './MainPage'
 import RegisterPage from './RegisterPage'
