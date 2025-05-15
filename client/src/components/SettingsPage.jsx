@@ -1,20 +1,26 @@
 import { useState, useEffect, useRef } from 'react'
-import { useNavigate } from 'react-router-dom'
-import useAuthContext from '../context/useAuthContext'
+import { useNavigate, useLocation } from 'react-router-dom'
+import useAuthContext from '../contexts/useAuthContext.js'
 import validateUser from '../utilities/validateUser.js'
 import fetchWithRefresh from '../utilities/fetchWithRefresh.js'
+import messageUtility from '../utilities/messageUtility.jsx'
 
 const SettingsPage = () => {
-    const { user, setUser } = useAuthContext()
+    const {
+        user,
+        setUser,
+        canEditSettings,
+        setCanEditSettings
+    } = useAuthContext()
     const [username, setUsername] = useState('')
     const [email, setEmail] = useState('')
     const [password, setPassword] = useState('')
-    const [confirmedPassword, setConfirmedPassword] = useState('')
-    const [editing, setEditing] = useState(false)
-    const [flashMessages, setFlashMessages] = useState([])
-    const [errors, setErrors] = useState([])
+    const [reEnteredPassword, setReEnteredPassword] = useState('')
+    const [successMessages, setSuccessMessages] = useState([])
+    const [errorMessages, setErrorMessages] = useState([])
     const shouldSubmit = useRef(false)
     const navigate = useNavigate()
+    const location = useLocation()
 
     useEffect(() => {
         if (!user) {
@@ -23,14 +29,20 @@ const SettingsPage = () => {
             setUsername(user.username)
             setEmail(user.email)
             setPassword('')
-            setConfirmedPassword('')
+            setReEnteredPassword('')
         }
-    }, [user, navigate])
+
+        if (!location.state?.fromConfirmationPage && canEditSettings) {
+            setCanEditSettings(false)
+        }
+
+        setErrorMessages([])
+    }, [user, navigate, location.state, canEditSettings, setCanEditSettings])
 
     const handleSubmit = async event => {
         event.preventDefault()
-        setFlashMessages([])
-        setErrors([])
+        setSuccessMessages([])
+        setErrorMessages([])
 
         if (!shouldSubmit.current) return
 
@@ -49,12 +61,12 @@ const SettingsPage = () => {
             if (!passwordValid.valid) newErrors.push(passwordValid.message)
         }
 
-        if (password && password !== confirmedPassword) {
+        if (password && password !== reEnteredPassword) {
             newErrors.push('Passwords must match')
         }
 
         if (newErrors.length > 0) {
-            setErrors(newErrors)
+            setErrorMessages(newErrors)
             return
         }
 
@@ -67,13 +79,11 @@ const SettingsPage = () => {
         }
 
         if (Object.keys(updatedUser).length === 0) {
-            setErrors(['No changes detected'])
+            setErrorMessages(['No changes detected'])
             return
         }
 
         try {
-            if (!window.confirm('Are you sure you want to update?')) return
-
             const response = await fetchWithRefresh(
                 `/api/v1/users/${user.id}`,
                 {
@@ -85,7 +95,7 @@ const SettingsPage = () => {
             const data = await response.json()
 
             if (!response.ok) {
-                setErrors([data.message || 'Update failed'])
+                setErrorMessages([data.message || 'Update failed'])
                 return
             } else {
                 const newMessages = []
@@ -103,58 +113,57 @@ const SettingsPage = () => {
                 setUser(Object.assign({}, user, updatedUser))
                 shouldSubmit.current = false
                 setPassword('')
-                setConfirmedPassword('')
-                setFlashMessagesTimeout(newMessages)
+                setReEnteredPassword('')
+                messageUtility.setSuccessMessagesTimeout(
+                    newMessages,
+                    setSuccessMessages
+                )
             }
         } catch (error) {
-            setErrors(['Server connection error'])
+            setErrorMessages(['Server connection error'])
             console.error(`Error: ${error.message}`)
         }
 
-        setEditing(false)
+        setCanEditSettings(false)
     }
 
-    const setFlashMessagesTimeout = messages => {
-        setFlashMessages(messages)
-
-        const timer = setTimeout(() => {
-            setFlashMessages([])
-        }, 3000)
-
-        return () => clearTimeout(timer)
+    const goToConfirmationPage = confirmationType => {
+        navigate('/confirm', { state: { confirmationType: confirmationType } })
     }
 
     const handleCancel = () => {
         setUsername(user?.username)
         setEmail(user?.email)
         setPassword('')
-        setConfirmedPassword('')
-        setEditing(false)
-        setErrors([])
+        setReEnteredPassword('')
+        setCanEditSettings(false)
+        setErrorMessages([])
     }
 
-    let confirmedPasswordDisplay
-    let buttonDisplay
-    let inputClasses
-    let passwordPlaceholder
+    let passwordLabel = ''
+    let passwordPlaceholder = ''
+    let reEnteredPasswordDisplay = null
+    let buttonDisplay = <></>
+    let inputClasses = ''
 
-    if (editing) {
-        confirmedPasswordDisplay =
+    if (canEditSettings) {
+        passwordLabel = 'New password'
+        reEnteredPasswordDisplay =
             <div className="mb-3">
                 <label
-                    htmlFor="confirmedPassword"
+                    htmlFor="reEnteredPassword"
                     className="form-label"
                 >
-                    Password (confirm)
+                    Re-enter new password
                 </label>
                 <input
                     type="password"
                     className="form-control rounded-0"
-                    id="confirmedPassword"
-                    value={confirmedPassword}
+                    id="reEnteredPassword"
+                    value={reEnteredPassword}
                     onChange={
                         event =>
-                            setConfirmedPassword(event.target.value)
+                            setReEnteredPassword(event.target.value)
                     }
                     placeholder="Leave blank to keep password unchanged"
                 />
@@ -179,12 +188,13 @@ const SettingsPage = () => {
         inputClasses = 'form-control rounded-0'
         passwordPlaceholder = 'Leave blank to keep password unchanged'
     } else {
+        passwordLabel = 'Password'
         buttonDisplay =
             <div>
                 <button 
                     type="button"
                     className="btn btn-primary mb-3 rounded-0"
-                    onClick={() => setEditing(true)}
+                    onClick={() => goToConfirmationPage('enterPassword')}
                 >
                     Edit
                 </button>
@@ -194,33 +204,17 @@ const SettingsPage = () => {
         passwordPlaceholder = '****************'
     }
 
-    let flashMessageDisplay = <></>
-
-    if (flashMessages) {
-        flashMessageDisplay = flashMessages.map((message, index) => (
-            <div className="alert alert-success rounded-0" key={index}>
-                {message}
-            </div>
-        ))
-    }
-
-    let errorDisplay = <></>
-
-    if (errors.length > 0) {
-        errorDisplay = errors.map((error, index) => (
-            <div className="alert alert-danger rounded-0" key={index}>
-                {error}
-            </div>
-        ))
-    }
+    const successMessageDisplay =
+        messageUtility.displaySuccessMessages(successMessages)
+    const errorMessageDisplay =
+        messageUtility.displayErrorMessages(errorMessages)
 
     return (
         <div className="container mt-5 px-5">
+            {successMessageDisplay}
+            {errorMessageDisplay}
             <h2 className="mb-4">Settings</h2>
-
             <form onSubmit={handleSubmit}>
-                {flashMessageDisplay}
-                {errorDisplay}
                 <div className="mb-3">
                     <label htmlFor="username" className="form-label">
                         Username
@@ -231,7 +225,7 @@ const SettingsPage = () => {
                         id="username"
                         value={username}
                         onChange={event => setUsername(event.target.value)}
-                        disabled={!editing}
+                        disabled={!canEditSettings}
                     />
                 </div>
 
@@ -245,13 +239,13 @@ const SettingsPage = () => {
                         id="email"
                         value={email}
                         onChange={event => setEmail(event.target.value)}
-                        disabled={!editing}
+                        disabled={!canEditSettings}
                     />
                 </div>
 
                 <div className="mb-3">
                     <label htmlFor="password" className="form-label">
-                        Password
+                        {passwordLabel}
                     </label>
                     <input
                         type="password"
@@ -259,11 +253,11 @@ const SettingsPage = () => {
                         id="password"
                         value={password}
                         onChange={event => setPassword(event.target.value)}
-                        disabled={!editing}
+                        disabled={!canEditSettings}
                         placeholder={passwordPlaceholder}
                     />
                 </div>
-                {confirmedPasswordDisplay}
+                {reEnteredPasswordDisplay}
 
                 <br />
                 {buttonDisplay}

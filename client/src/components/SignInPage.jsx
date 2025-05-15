@@ -1,43 +1,34 @@
-import { useState, useEffect } from 'react'
-import { Link, useNavigate, useLocation } from 'react-router-dom'
-import useAuthContext from '../context/useAuthContext'
+import { useState, useEffect, useRef } from 'react'
+import { useNavigate, Link } from 'react-router-dom'
+import useAuthContext from '../contexts/useAuthContext.js'
+import messageUtility from '../utilities/messageUtility.jsx'
 
 const SignInPage = ({ backEndUrl }) => {
     const { user, setUser } = useAuthContext()
     const [email, setEmail] = useState('')
     const [password, setPassword] = useState('')
-    const [errors, setErrors] = useState([])
-    const [flashMessage, setFlashMessage] = useState('')
+    const [successMessages, setSuccessMessages] = useState([])
+    const [errorMessages, setErrorMessages] = useState([])
     const navigate = useNavigate()
-    const location = useLocation()
+    const isSigningIn = useRef(false)
 
     useEffect(() => {
-        if (user) navigate('/')
+        if (user && !isSigningIn.current) navigate('/')
     }, [user, navigate])
-
-    useEffect(() => {
-        if (location.state?.message) {
-            setFlashMessage(location.state.message)
-
-            const timer = setTimeout(() => {
-                setFlashMessage('')
-            }, 3000)
-
-            return () => clearTimeout(timer)
-        }
-    }, [location.state])
 
     const handleSubmit = async event => {
         event.preventDefault()
-        setErrors([])
+        if (isSigningIn.current) return
+        isSigningIn.current = true
+        setErrorMessages([])
 
         const newErrors = []
 
         if (email.trim() === '') newErrors.push('Email address required')
         if (!password) newErrors.push('Password required')
-
         if (newErrors.length > 0) {
-            setErrors(newErrors)
+            setErrorMessages(newErrors)
+            isSigningIn.current = false
             return
         }
 
@@ -51,45 +42,33 @@ const SignInPage = ({ backEndUrl }) => {
             const data = await response.json()
 
             if (!response.ok) {
-                setErrors([data.message || 'Sign-in failed'])
+                setErrorMessages([data.message || 'Sign-in failed'])
+                isSigningIn.current = false
                 return
             }
 
             setUser(data.user)
-            navigate('/', { state: { message: 'Signed in successfully' } })
+            isSigningIn.current = true
+            setSuccessMessages(['Signed in successfully'])
+            setTimeout(() => { navigate('/') }, 1000)
         } catch (error) {
-            setErrors(['Server connection error'])
+            setErrorMessages(['Server connection error'])
             console.error(`Error: ${error.message}`)
+            isSigningIn.current = false
         }
     }
 
-    let flashMessageDisplay = <></>
-
-    if (flashMessage) {
-        flashMessageDisplay = 
-            <div className="alert alert-success rounded-0">
-                {flashMessage}
-            </div>
-    }
-
-    let errorDisplay = <></>
-
-    if (errors.length > 0) {
-        errorDisplay = errors.map((error, index) => {
-            return (
-                <div className="alert alert-danger rounded-0" key={index}>
-                    {error}
-                </div>
-            )
-        })
-    }
+    const successMessageDisplay =
+        messageUtility.displaySuccessMessages(successMessages)
+    const errorMessageDisplay =
+        messageUtility.displayErrorMessages(errorMessages)
 
     return (
         <div className="container mt-5 px-5">
+            {successMessageDisplay}
+            {errorMessageDisplay}
             <h2 className="mb-4">Sign In</h2>
             <form onSubmit={handleSubmit}>
-                {flashMessageDisplay}
-                {errorDisplay}
                 <div className="mb-3">
                     <label htmlFor="email" className="form-label">
                         Email address
@@ -114,9 +93,9 @@ const SignInPage = ({ backEndUrl }) => {
                         onChange={event => setPassword(event.target.value)}
                     />
                 </div>
-                
+
                 <br />
-                <button 
+                <button
                     type="submit"
                     className="btn btn-primary mb-3 rounded-0"
                 >

@@ -1,7 +1,8 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
-import useAuthContext from '../context/useAuthContext'
+import useAuthContext from '../contexts/useAuthContext.js'
 import validateUser from '../utilities/validateUser.js'
+import messageUtility from '../utilities/messageUtility.jsx'
 
 const RegisterPage = ({ backEndUrl }) => {
     const { user } = useAuthContext()
@@ -9,16 +10,18 @@ const RegisterPage = ({ backEndUrl }) => {
     const [email, setEmail] = useState('')
     const [password, setPassword] = useState('')
     const [confirmedPassword, setConfirmedPassword] = useState('')
-    const [errors, setErrors] = useState([])
+    const [successMessages, setSuccessMessages] = useState([])
+    const [errorMessages, setErrorMessages] = useState([])
     const navigate = useNavigate()
+    const isRegistering = useRef(false)
 
     useEffect(() => {
-        if (user) navigate('/')
+        if (user && !isRegistering.current) navigate('/')
     }, [user, navigate])
 
     const handleSubmit = async event => {
         event.preventDefault()
-        setErrors([])
+        setErrorMessages([])
 
         const newErrors = []
 
@@ -36,7 +39,7 @@ const RegisterPage = ({ backEndUrl }) => {
         }
 
         if (newErrors.length > 0) {
-            setErrors(newErrors)
+            setErrorMessages(newErrors)
             return
         }
 
@@ -49,36 +52,30 @@ const RegisterPage = ({ backEndUrl }) => {
             const data = await response.json()
 
             if (!response.ok) {
-                setErrors([data.message || 'Registration failed'])
+                setErrorMessages([data.message || 'Registration failed'])
                 return
             }
 
-            navigate('/sign-in', { state: {
-                message: 'Registered successfully — please sign in'
-            } })
+            isRegistering.current = true
+            setSuccessMessages(['Registered successfully — please sign in'])
+            setTimeout(() => { navigate('/sign-in') }, 1000)
         } catch (error) {
-            setErrors(['Server connection error'])
+            setErrorMessages(['Server connection error'])
             console.error(`Error: ${error.message}`)
         }
     }
 
-    let errorDisplay = <></>
-
-    if (errors.length > 0) {
-        errorDisplay = errors.map((error, index) => {
-            return (
-                <div className="alert alert-danger rounded-0" key={index}>
-                    {error}
-                </div>
-            )
-        })
-    }
+    const successMessageDisplay =
+        messageUtility.displaySuccessMessages(successMessages)
+    const errorMessageDisplay =
+        messageUtility.displayErrorMessages(errorMessages)
 
     return (
         <div className="container mt-5 px-5">
+            {successMessageDisplay}
+            {errorMessageDisplay}
             <h2 className="mb-4">Register</h2>
             <form onSubmit={handleSubmit}>
-                {errorDisplay}
                 <div className="mb-3">
                     <label htmlFor="username" className="form-label">
                         Username
@@ -118,7 +115,7 @@ const RegisterPage = ({ backEndUrl }) => {
 
                 <div className="mb-3">
                     <label htmlFor="confirmedPassword" className="form-label">
-                        Password (confirm)
+                        Re-enter password
                     </label>
                     <input
                         type="password"
