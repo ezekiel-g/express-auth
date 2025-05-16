@@ -36,8 +36,7 @@ const validateUser = {
         }
         
         const duplicateCheck = await checkForDuplicate(
-            username,
-            'username',
+            { username },
             getUsers,
             excludeId
         )
@@ -66,8 +65,7 @@ const validateUser = {
             }
         }
         const duplicateCheck = await checkForDuplicate(
-            email,
-            'email',
+            { email },
             getUsers,
             excludeId
         )
