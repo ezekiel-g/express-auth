@@ -25,19 +25,18 @@ const RegisterPage = ({ backEndUrl }) => {
 
         const newErrors = []
 
-        const usernameValid = validateUser.validateUsername(username)
+        const usernameValid = await validateUser.validateUsername(username)
         if (!usernameValid.valid) newErrors.push(usernameValid.message)
 
-        const emailValid = validateUser.validateEmail(email)
+        const emailValid = await validateUser.validateEmail(email)
         if (!emailValid.valid) newErrors.push(emailValid.message)
 
-        const passwordValid = validateUser.validatePassword(password)
+        const passwordValid = await validateUser.validatePassword(password)
         if (!passwordValid.valid) newErrors.push(passwordValid.message)
 
         if (password !== confirmedPassword) {
             newErrors.push('Passwords must match')
         }
-
         if (newErrors.length > 0) {
             setErrorMessages(newErrors)
             return

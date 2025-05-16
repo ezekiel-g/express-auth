@@ -15,13 +15,15 @@ const App = () => {
     useEffect(() => {
         const checkIfSignedIn = async () => {
             try {
-                const response = await fetch(`${backEndUrl}/api/v1/sessions`, {
-                    credentials: 'include'
-                })
-
+                const response = await fetch(
+                    `${backEndUrl}/api/v1/sessions`,
+                    { credentials: 'include' }
+                )
                 if (response.ok) {
                     const data = await response.json()
                     setUser(data.user)
+                } else {
+                    console.error(`Fetch error: ${response.statusText}`)
                 }
             } catch (error) {
                 console.error(`Error: ${error.message}`)
