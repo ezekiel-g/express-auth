@@ -95,7 +95,10 @@ const createSession = async (request, response) => {
             sameSite: 'Strict'
         })
         
-        return response.status(200).json({ user })
+        return response.status(200).json({
+            message: 'Signed-in successfully',
+            user
+        })
     } catch (error) {
         console.error(`Error: ${error.message}\nStack trace: ${error.stack}`)
         response.status(500).json({ message: 'Internal server error' })

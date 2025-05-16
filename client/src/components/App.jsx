@@ -7,6 +7,7 @@ import RegisterPage from './RegisterPage'
 import SignInPage from './SignInPage'
 import SettingsPage from './SettingsPage'
 import ConfirmationPage from './ConfirmationPage'
+import fetchFromDatabase from '../utilities/fetchFromDatabase.js'
 
 const App = () => {
     const { setUser } = useAuthContext()
@@ -14,20 +15,13 @@ const App = () => {
 
     useEffect(() => {
         const checkIfSignedIn = async () => {
-            try {
-                const response = await fetch(
-                    `${backEndUrl}/api/v1/sessions`,
-                    { credentials: 'include' }
-                )
-                if (response.ok) {
-                    const data = await response.json()
-                    setUser(data.user)
-                } else {
-                    console.error(`Fetch error: ${response.statusText}`)
-                }
-            } catch (error) {
-                console.error(`Error: ${error.message}`)
-            }
+            const data = await fetchFromDatabase(
+                `${backEndUrl}/api/v1/sessions`,
+                'GET',
+                'application/json',
+                'include'
+            )
+            setUser(data.user)
         }
 
         checkIfSignedIn()
