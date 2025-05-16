@@ -22,8 +22,8 @@ const queries = {
         WHERE id = ?;
     `,
     deleteUser: 'DELETE FROM users WHERE id = ?;'
-    
 }
+
 const jwtSecret = process.env.JWT_SECRET
 
 if (!jwtSecret) {
