@@ -34,14 +34,16 @@ const SettingsPage = () => {
 
         const newErrors = []
 
-        const usernameValid = validateUser.validateUsername(username)
+        const usernameValid =
+            await validateUser.validateUsername(username, user.id)
         if (!usernameValid.valid) newErrors.push(usernameValid.message)
 
-        const emailValid = validateUser.validateEmail(email)
+        const emailValid = await validateUser.validateEmail(email, user.id)
         if (!emailValid.valid) newErrors.push(emailValid.message)
 
         if (password && password !== '') {
-            const passwordValid = validateUser.validatePassword(password)
+            const passwordValid =
+                await validateUser.validatePassword(password, user.id)
             if (!passwordValid.valid) newErrors.push(passwordValid.message)
         }
         if (password && password !== reEnteredPassword) {
@@ -88,7 +90,11 @@ const SettingsPage = () => {
             const data = await response.json()
 
             if (!response.ok) {
-                setErrorMessages([data.message || 'Update failed'])
+                if (Array.isArray(data.messages)) {
+                    setErrorMessages(data.messages)
+                } else {
+                    setErrorMessages([data.message || 'Update failed'])
+                }
                 return
             } else {
                 const newMessages = []

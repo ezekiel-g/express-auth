@@ -1,5 +1,25 @@
-const validateEmployee = {
-    validateUsername: username => {
+import bcryptjs from 'bcryptjs'
+import checkForDuplicate from './checkForDuplicate.js'
+
+const backEndUrl = import.meta.env.VITE_BACK_END_URL
+
+const getUsers = async () => {
+    let data = null
+    try {
+        const response = await fetch(`${backEndUrl}/api/v1/users`)
+        if (response.ok) {
+            data = await response.json()
+        } else {
+            console.error(`Fetch error: ${response.statusText}`)
+        }
+    } catch (error) {
+        console.error(`Error: ${error.message}`)
+    }
+    return data
+}
+
+const validateUser = {
+    validateUsername: async (username, excludeId = null) => {
         if (!username) {
             return { valid: false, message: 'Username required' }
         }
@@ -14,10 +34,21 @@ const validateEmployee = {
                 `
             }
         }
+        
+        const duplicateCheck = await checkForDuplicate(
+            username,
+            'username',
+            getUsers,
+            excludeId
+        )
+        
+        if (duplicateCheck !== 'pass') {
+            return { valid: false, message: 'Username taken' }
+        }
         return { valid: true, message: '' }
     },
 
-    validateEmail: email => {
+    validateEmail: async (email, excludeId = null) => {
         if (!email) {
             return { valid: false, message: 'Email address required' }
         }
@@ -34,10 +65,19 @@ const validateEmployee = {
                 `
             }
         }
+        const duplicateCheck = await checkForDuplicate(
+            email,
+            'email',
+            getUsers,
+            excludeId
+        )
+        if (duplicateCheck !== 'pass') {
+            return { valid: false, message: 'Email address taken' }
+        }
         return { valid: true, message: '' }
     },
 
-    validatePassword: password => {
+    validatePassword: async (password, userId) => {
         if (!password) {
             return { valid: false, message: 'Password required' }
         }
@@ -53,8 +93,18 @@ const validateEmployee = {
                 `
             }
         }
+        if (userId) {
+            const users = await getUsers()
+            const user = users.find(row => row.id === userId)
+            if (user && await bcryptjs.compare(password, user.password)) {
+                return {
+                    valid: false,
+                    message: 'New password same as current password'
+                }
+            }
+        }
         return { valid: true, message: '' }
     }
 }
 
-export default validateEmployee
+export default validateUser

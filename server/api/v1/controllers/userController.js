@@ -2,6 +2,7 @@ import bcryptjs from 'bcryptjs'
 import dbConnection from '../database/database.js'
 import handleDbError from '../utilities/handleDbError.js'
 import validateSession from '../utilities/validateSession.js'
+// import checkForDuplicates from '../utilities/checkForDuplicates.js'
 
 const queries = {
     readUsers: 'SELECT * FROM users;',
@@ -57,25 +58,16 @@ const createUser = async (request, response) => {
     if (!role) { role = 'user' }
 
     try {
-        const duplicateEntryErrors = []
-        const [existingUsername] = await dbConnection.execute(
-            queries.readUserUsername,
-            [username]
-        )
-        const [existingEmail] = await dbConnection.execute(
-            queries.readUserEmail,
-            [email]
-        )
+        // // There is already validation for dupliate values both
+        // // on the front end and from the database, but there is optional
+        // // duplicate values validation here
 
-        if (existingUsername.length > 0) {
-            duplicateEntryErrors.push('Username taken')
-        }
-        if (existingEmail.length > 0) {
-            duplicateEntryErrors.push('Email address taken')
-        }
-        if (duplicateEntryErrors.length > 0) {
-            return response.status(400).json({ messages: duplicateEntryErrors })
-        }
+        // const duplicateCheck = await checkForDuplicates(
+        //     response,
+        //     { username, email }
+        // )
+        
+        // if (duplicateCheck !== 'pass') return
 
         const salt = await bcryptjs.genSalt(10)
         const hashedPassword = await bcryptjs.hash(password, salt)
@@ -115,6 +107,17 @@ const updateUser = async (request, response) => {
         const updatedEmail = email ?? oldDetails[0].email
         let updatedPassword = password ?? oldDetails[0].password
         const updatedRole = role ?? oldDetails[0].role
+
+        // // There is already validation for dupliate values both
+        // // on the front end and from the database, but there is optional
+        // // duplicate values validation here
+
+        // const duplicateCheck = await checkForDuplicates(
+        //     response,
+        //     { username, email },
+        //     id
+        // )
+        // if (duplicateCheck !== 'pass') return
 
         if (password) {
             const salt = await bcryptjs.genSalt(10)
