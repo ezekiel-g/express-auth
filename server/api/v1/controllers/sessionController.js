@@ -16,7 +16,9 @@ const readSession = async (request, response) => {
     try {
         const decryptedToken = validateSession(request)
 
-        if (decryptedToken === null) return
+        if (decryptedToken === null) {
+            return response.status(200).json({ user: null })
+        }
 
         const [rows] = await dbConnection.execute(
             `
@@ -29,7 +31,7 @@ const readSession = async (request, response) => {
         const user = rows[0]
 
         if (!user) {
-            return response.status(401).json({ message: 'Invalid session' })
+            return response.status(200).json({ user: null })
         }
 
         return response.status(200).json({ user })
