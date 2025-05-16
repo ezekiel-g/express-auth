@@ -1,7 +1,9 @@
 import { useState, useEffect, useRef } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
+import bcryptjs from 'bcryptjs'
 import useAuthContext from '../contexts/auth/useAuthContext.js'
 import messageUtility from '../utilities/messageUtility.jsx'
+import fetchFromDatabase from '../utilities/fetchFromDatabase.js'
 
 const ConfirmationPage = ({ backEndUrl }) => {
     const { user, setUser, setCanEditSettings } = useAuthContext()
@@ -40,24 +42,18 @@ const ConfirmationPage = ({ backEndUrl }) => {
         submitButtonName = 'Submit'
 
         confirmFunction = async () => {
-            const response = await fetch(
-                `${backEndUrl}/api/v1/users/${user.id}/verify-password`,
-                {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ password }),
-                    credentials: 'include'
-                }
+            const data = await fetchFromDatabase(
+                `${backEndUrl}/api/v1/users/${user.id}`,
+                'GET',
+                'application/json',
+                'include'
             )
-
-            if (!response.ok) {
-                const data = await response.json()
-                setErrorMessages(
-                    [data.message || 'Password verification failed']
-                )
+            const isPasswordValid =
+                await bcryptjs.compare(password, data.password)
+            if (!isPasswordValid) {
+                setErrorMessages(['Invalid password'])
                 return
             }
-
             setErrorMessages([])
             setCanEditSettings(true)
             navigate('/settings', { state: { confirmedPassword: true } })
@@ -98,19 +94,16 @@ const ConfirmationPage = ({ backEndUrl }) => {
         submitButtonName = 'Confirm'
 
         confirmFunction = async () => {
-            try {
-                await fetch(`${backEndUrl}/api/v1/sessions`, {
-                    method: 'DELETE',
-                    credentials: 'include'
-                })
-            } catch (error) {
-                console.error(`Error: ${error.message}`)
-            }
-
+            const data = await fetchFromDatabase(
+                `${backEndUrl}/api/v1/sessions`,
+                'DELETE',
+                'application/json',
+                'include'
+            )
             setUser(null)
             isSigningOut.current = true
-            setSuccessMessages(['Signed out successfully'])
-            setTimeout(() => { navigate('/') }, 1000)
+            setSuccessMessages([data.message || 'Signed out successfully'])
+            setTimeout(() => { navigate('/sign-in') }, 1000)
         }
 
         cancelFunction = () => navigate('/')

@@ -31,6 +31,7 @@ const validateSession = (request, expectedId = null) => {
             authError.status = 401
             throw authError
         }
+        
         throw error
     }
 }
