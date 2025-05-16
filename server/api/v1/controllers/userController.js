@@ -4,6 +4,10 @@ import handleDbError from '../utilities/handleDbError.js'
 import validateSession from '../utilities/validateSession.js'
 // import checkForDuplicates from '../utilities/checkForDuplicates.js'
 
+// // There is already validation for dupliate values both
+// // on the front end and from the database, but there is optional
+// // duplicate values validation here
+
 const queries = {
     readUsers: 'SELECT * FROM users;',
     readUser: 'SELECT * FROM users WHERE id = ?;',
@@ -55,12 +59,9 @@ const createUser = async (request, response) => {
     const { username, email, password } = request.body
     let { role } = request.body
     
-    if (!role) { role = 'user' }
+    if (!role) role = 'user'
 
     try {
-        // // There is already validation for dupliate values both
-        // // on the front end and from the database, but there is optional
-        // // duplicate values validation here
 
         // const duplicateCheck = await checkForDuplicates(
         //     response,
@@ -107,10 +108,6 @@ const updateUser = async (request, response) => {
         const updatedEmail = email ?? oldDetails[0].email
         let updatedPassword = password ?? oldDetails[0].password
         const updatedRole = role ?? oldDetails[0].role
-
-        // // There is already validation for dupliate values both
-        // // on the front end and from the database, but there is optional
-        // // duplicate values validation here
 
         // const duplicateCheck = await checkForDuplicates(
         //     response,
