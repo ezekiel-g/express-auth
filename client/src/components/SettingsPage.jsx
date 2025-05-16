@@ -265,7 +265,7 @@ const SettingsPage = ({ backEndUrl }) => {
                         Email address
                     </label>
                     <input
-                        type="email"
+                        type="text"
                         className={inputClasses}
                         id="email"
                         value={email}
