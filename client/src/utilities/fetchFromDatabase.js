@@ -24,9 +24,7 @@ const fetchFromDatabase = async (
             credentials
         }
 
-        if (body) {
-            options.body = JSON.stringify(body)
-        }
+        if (body) options.body = JSON.stringify(body)
 
         const response = await fetch(url, options)
 

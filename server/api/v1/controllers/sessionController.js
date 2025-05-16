@@ -96,7 +96,7 @@ const createSession = async (request, response) => {
         })
         
         return response.status(200).json({
-            message: 'Signed-in successfully',
+            message: 'Signed in successfully',
             user
         })
     } catch (error) {
