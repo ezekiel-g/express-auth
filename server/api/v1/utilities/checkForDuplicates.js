@@ -25,13 +25,18 @@ const checkForDuplicates = async (response, entries = {}, excludeId = null) => {
 
         if (!queryInfo) continue
         
-        const [rows] = await dbConnection.execute(queryInfo.query, [value])
+        try {
+            const [rows] = await dbConnection.execute(queryInfo.query, [value])
     
-        if (
-            rows.length > 0 &&
-            (!excludeId || rows[0].id !== Number(excludeId))
-        ) {
-            duplicateEntryErrors.push(queryInfo.errorMessage)
+            if (
+                rows.length > 0 &&
+                (!excludeId || rows[0].id !== Number(excludeId))
+            ) {
+                duplicateEntryErrors.push(queryInfo.errorMessage)
+            }
+        } catch (error) {
+            console.error(`Error: ${error.message}`)
+            return response.status(500).json({ message: 'Database error' })
         }
     }
 
