@@ -5,7 +5,7 @@ import fetchWithRefresh from '../utilities/fetchWithRefresh.js'
 import validateUser from '../utilities/validateUser.js'
 import messageUtility from '../utilities/messageUtility.jsx'
 
-const SettingsPage = () => {
+const SettingsPage = ({ backEndUrl }) => {
     const {
         user,
         setUser,
@@ -46,7 +46,10 @@ const SettingsPage = () => {
                 await validateUser.validatePassword(password, user.id)
             if (!passwordValid.valid) newErrors.push(passwordValid.message)
         }
-        if (password && password !== reEnteredPassword) {
+        if (
+            (password && password !== reEnteredPassword) ||
+            (!password && reEnteredPassword)
+        ) {
             newErrors.push('Passwords must match')
         }
         if (newErrors.length > 0) {
@@ -77,50 +80,38 @@ const SettingsPage = () => {
 
     const handleSecondSubmit = useCallback(async updated => {
         const updatedUser = Object.assign({}, user, updated)
+        const data = await fetchWithRefresh(
+            `${backEndUrl}/api/v1/users/${user.id}`,
+            'PUT',
+            'application/json',
+            'include',
+            updatedUser
+        )
 
-        try {
-            const response = await fetchWithRefresh(
-                `/api/v1/users/${user.id}`,
-                {
-                    method: 'PUT',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(updatedUser)
-                }
-            )
-            const data = await response.json()
+        if (!data || typeof data !== 'object') {
+            setErrorMessages([data?.message || 'Update failed'])
+            return
+        } else {
+            const newMessages = []
 
-            if (!response.ok) {
-                if (Array.isArray(data.messages)) {
-                    setErrorMessages(data.messages)
-                } else {
-                    setErrorMessages([data.message || 'Update failed'])
-                }
-                return
-            } else {
-                const newMessages = []
-
-                if (updated.username) {
-                    newMessages.push('Username updated successfully')
-                }
-                if (updated.email) {
-                    newMessages.push('Email address updated successfully')
-                }
-                if (updated.password) {
-                    newMessages.push('Password updated successfully')
-                }
-
-                setUser(updatedUser)
-                shouldSubmit.current = false
-                setPassword('')
-                setReEnteredPassword('')
-                messageUtility.setSuccessMessagesTimeout(
-                    newMessages,
-                    setSuccessMessages
-                )
+            if (updated.username) {
+                newMessages.push('Username updated successfully')
             }
-        } catch (error) {
-            setErrorMessages(['Server connection error'])
-            console.error(`Error: ${error.message}`)
+            if (updated.email) {
+                newMessages.push('Email address updated successfully')
+            }
+            if (updated.password) {
+                newMessages.push('Password updated successfully')
+            }
+
+            setUser(updatedUser)
+            shouldSubmit.current = false
+            setPassword('')
+            setReEnteredPassword('')
+            messageUtility.setSuccessMessagesTimeout(
+                newMessages,
+                setSuccessMessages
+            )
         }
 
         setCanEditSettings(false)
@@ -131,7 +122,8 @@ const SettingsPage = () => {
         setUser,
         setCanEditSettings,
         navigate,
-        location.pathname        
+        location.pathname,
+        backEndUrl       
     ])
 
     useEffect(() => {

@@ -21,6 +21,7 @@ const App = () => {
                 'application/json',
                 'include'
             )
+            if (!data || typeof data !== 'object' || !data.user) return
             setUser(data.user)
         }
 
@@ -40,7 +41,10 @@ const App = () => {
                     path="/sign-in"
                     element={<SignInPage backEndUrl={backEndUrl} />}
                 />
-                <Route path="/settings" element={<SettingsPage />} />
+                <Route
+                    path="/settings"
+                    element={<SettingsPage backEndUrl={backEndUrl} />}
+                />
                 <Route
                     path="/confirm"
                     element={<ConfirmationPage backEndUrl={backEndUrl} />}

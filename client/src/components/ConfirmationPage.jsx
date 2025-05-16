@@ -42,12 +42,25 @@ const ConfirmationPage = ({ backEndUrl }) => {
         submitButtonName = 'Submit'
 
         confirmFunction = async () => {
+            if (!password) {
+                setErrorMessages(['Password required'])
+                return
+            }
+
             const data = await fetchFromDatabase(
                 `${backEndUrl}/api/v1/users/${user.id}`,
                 'GET',
                 'application/json',
                 'include'
             )
+            if (
+                !data ||
+                typeof data !== 'object' ||
+                typeof data.password !== 'string'
+            ) {
+                setErrorMessages([data?.message || 'Fetch error'])
+                return
+            }
             const isPasswordValid =
                 await bcryptjs.compare(password, data.password)
             if (!isPasswordValid) {

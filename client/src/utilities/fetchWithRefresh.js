@@ -1,34 +1,41 @@
-const backEndUrl = import.meta.env.VITE_BACK_END_URL
+import fetchFromDatabase from './fetchFromDatabase.js'
 
-const fetchWithRefresh = async (endpoint, options = {}) => {
-    const response = await fetch(`${backEndUrl}${endpoint}`, {
-        method: options.method || 'GET',
-        headers: options.headers || {},
-        body: options.body || null,
-        credentials: 'include'
-    })
+const fetchWithRefresh = async (
+    url,
+    method = 'GET',
+    headers = {},
+    credentials = 'same-origin',
+    body = null
+) => {
+    const data =
+        await fetchFromDatabase(url, method, headers, credentials, body)
 
-    if (response.status !== 401) return response
+    if (data && data.status !== 401) return data
 
-    const refreshResponse = await fetch(
-        `${backEndUrl}/api/v1/sessions/refresh`,
-        {
-            method: 'POST',
-            credentials: 'include'
-        }
+    let backEndUrl
+
+    if (url.includes('/api')) {
+        backEndUrl = url.split('/api')[0]
+    } else {
+        throw new Error('No \'/api\' in backEndUrl')
+    }
+
+    const refreshData = await fetchFromDatabase(
+        `${backEndUrl}/api/v1/sessions`,
+        'POST',
+        'application/json',
+        'include'
     )
 
-    if (!refreshResponse.ok) {
+    if (!refreshData.ok) {
         window.location.href = '/sign-in'
         throw new Error('Session expired')
     }
 
-    return fetch(`${backEndUrl}${endpoint}`, {
-        method: options.method || 'GET',
-        headers: options.headers || {},
-        body: options.body || null,
-        credentials: 'include'
-    })
+    const refreshedData =
+        await fetchFromDatabase(url, method, headers, credentials, body)
+
+    return refreshedData
 }
 
 export default fetchWithRefresh

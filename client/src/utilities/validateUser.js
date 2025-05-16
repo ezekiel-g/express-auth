@@ -25,13 +25,11 @@ const validateUser = {
                 `
             }
         }
-        
         const duplicateCheck = await checkForDuplicate(
             { username },
             getUsers,
             excludeId
         )
-        
         if (duplicateCheck !== 'pass') {
             return { valid: false, message: 'Username taken' }
         }
