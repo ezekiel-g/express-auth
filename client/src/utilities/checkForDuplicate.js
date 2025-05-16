@@ -5,15 +5,15 @@ const checkForDuplicate = async (
 ) => {
     const rows = await fetchFunction()
 
-    if (rows.length === 0 || !Array.isArray(rows)) return 'pass'
-    
-    const columnName = Object.keys(entryObject)[0]
+    if (rows.length === 0  || !Array.isArray(rows)) return 'pass'
+
+    const [columnName] = Object.keys(entryObject)
     const value = entryObject[columnName]
 
     const hasDuplicate = rows.some(
         row => row[columnName] === value && row.id !== excludeId
     )
-    
+
     return hasDuplicate ? 'fail' : 'pass'
 }
 

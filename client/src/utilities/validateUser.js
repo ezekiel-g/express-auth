@@ -1,20 +1,11 @@
 import bcryptjs from 'bcryptjs'
+import fetchFromDatabase from './fetchFromDatabase.js'
 import checkForDuplicate from './checkForDuplicate.js'
 
 const backEndUrl = import.meta.env.VITE_BACK_END_URL
 
 const getUsers = async () => {
-    let data = null
-    try {
-        const response = await fetch(`${backEndUrl}/api/v1/users`)
-        if (response.ok) {
-            data = await response.json()
-        } else {
-            console.error(`Fetch error: ${response.statusText}`)
-        }
-    } catch (error) {
-        console.error(`Error: ${error.message}`)
-    }
+    const data = await fetchFromDatabase(`${backEndUrl}/api/v1/users`)
     return data
 }
 

@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
 import useAuthContext from '../contexts/auth/useAuthContext.js'
+import fetchFromDatabase from '../utilities/fetchFromDatabase.js'
 import messageUtility from '../utilities/messageUtility.jsx'
 
 const SignInPage = ({ backEndUrl }) => {
@@ -32,29 +33,23 @@ const SignInPage = ({ backEndUrl }) => {
             return
         }
 
-        try {
-            const response = await fetch(`${backEndUrl}/api/v1/sessions`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ email, password }),
-                credentials: 'include'
-            })
-            const data = await response.json()
+        const data = await fetchFromDatabase(
+            `${backEndUrl}/api/v1/sessions`,
+            'POST',
+            'application/json',
+            'include',
+            { email, password }
+        )
 
-            if (!response.ok) {
-                setErrorMessages([data.message || 'Sign-in failed'])
-                isSigningIn.current = false
-                return
-            }
-
+        if (!data || typeof data !== 'object') {
+            isSigningIn.current = false
+            setErrorMessages(['Sign-in failed'])
+            return
+        } else {
             setUser(data.user)
             isSigningIn.current = true
-            setSuccessMessages(['Signed in successfully'])
+            setSuccessMessages([data.message || 'Signed in successfully'])
             setTimeout(() => { navigate('/') }, 1000)
-        } catch (error) {
-            setErrorMessages(['Server connection error'])
-            console.error(`Error: ${error.message}`)
-            isSigningIn.current = false
         }
     }
 

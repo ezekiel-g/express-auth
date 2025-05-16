@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
 import useAuthContext from '../contexts/auth/useAuthContext.js'
+import fetchFromDatabase from '../utilities/fetchFromDatabase.js'
 import validateUser from '../utilities/validateUser.js'
 import messageUtility from '../utilities/messageUtility.jsx'
 
@@ -42,29 +43,24 @@ const RegisterPage = ({ backEndUrl }) => {
             return
         }
 
-        try {
-            const response = await fetch(`${backEndUrl}/api/v1/users`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ username, email, password })
-            })
-            const data = await response.json()
-
-            if (!response.ok) {
-                if (Array.isArray(data.messages)) {
-                    setErrorMessages(data.messages)
-                } else {
-                    setErrorMessages([data.message || 'Registration failed'])
-                }
-                return
-            }
-
+        const data = await fetchFromDatabase(
+            `${backEndUrl}/api/v1/users`,
+            'POST',
+            'application/json',
+            'same-origin',
+            { username, email, password }
+        )
+        
+        if (!data || typeof data !== 'object') {
+            setErrorMessages(['Registration failed'])
+            return
+        } else {
             isRegistering.current = true
-            setSuccessMessages(['Registered successfully — please sign in'])
+            setSuccessMessages([
+                data.message ||
+                'Registered successfully — please sign in'
+            ])
             setTimeout(() => { navigate('/sign-in') }, 2000)
-        } catch (error) {
-            setErrorMessages(['Server connection error'])
-            console.error(`Error: ${error.message}`)
         }
     }
 
