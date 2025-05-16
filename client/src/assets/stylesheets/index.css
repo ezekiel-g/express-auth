@@ -1,10 +1,11 @@
 * {
-    color: #E0E0E0;
+    color: #e0e0e0;
     background-color: #212121;
     font-family: Arial, sans-serif;
 }
 
-input::placeholder, textarea::placeholder {
+input::placeholder,
+textarea::placeholder {
     color: #909090;
     font-style: italic;
 }
