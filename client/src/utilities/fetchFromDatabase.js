@@ -29,7 +29,12 @@ const fetchFromDatabase = async (
         const response = await fetch(url, options)
 
         if (!response.ok) {
-            throw new Error(`HTTP ${response.status}: ${response.statusText}`)
+            const errorData = await response.json().catch(() => ({}))
+            if (!errorData.message) {
+                errorData.message =
+                    `HTTP ${response.status}: ${response.statusText}`
+            }
+            return errorData
         }
 
         return await response.json()
