@@ -7,6 +7,10 @@ userRouter.get('/', userController.readUsers)
 userRouter.get('/verify-email', userController.verifyEmail)
 userRouter.get('/:id', userController.readUser)
 userRouter.post('/', userController.createUser)
+userRouter.post(
+    '/resend-verification-email',
+    userController.resendVerificationEmail
+)
 userRouter.put('/:id', userController.updateUser)
 userRouter.delete('/:id', userController.deleteUser)
 
