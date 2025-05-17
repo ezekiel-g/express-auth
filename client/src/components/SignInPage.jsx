@@ -41,7 +41,7 @@ const SignInPage = ({ backEndUrl }) => {
             { email, password }
         )
 
-        if (!data || typeof data !== 'object') {
+        if (!data || typeof data !== 'object' || !data.user) {
             isSigningIn.current = false
             setErrorMessages([ data?.message || 'Sign-in failed'])
             return

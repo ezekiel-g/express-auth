@@ -54,7 +54,6 @@ const createSession = async (request, response) => {
             [email]
         )
         const user = rows[0]
-
         if (!user) {
             return response.status(401).json({
                 message: 'Invalid credentials'
@@ -69,6 +68,12 @@ const createSession = async (request, response) => {
             })
         }
         
+        if (!user.email_verified) {
+            return response.status(403).json({
+                message: 'Please verify email address before signing in'
+            })
+        }
+
         delete user.password
 
         const accessToken = jsonwebtoken.sign(

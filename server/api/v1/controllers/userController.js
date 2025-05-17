@@ -1,7 +1,10 @@
 import bcryptjs from 'bcryptjs'
+import crypto from 'crypto'
 import dbConnection from '../database/database.js'
 import handleDbError from '../utilities/handleDbError.js'
 import validateSession from '../utilities/validateSession.js'
+import emailTransporter from '../utilities/emailTransporter.js'
+import registrationEmail from '../templates/registrationEmail.js'
 // import checkForDuplicates from '../utilities/checkForDuplicates.js'
 
 // // There is already validation for dupliate values both
@@ -11,24 +14,48 @@ import validateSession from '../utilities/validateSession.js'
 const queries = {
     readUsers: 'SELECT * FROM users;',
     readUser: 'SELECT * FROM users WHERE id = ?;',
-    readUserUsername: 'SELECT id FROM users WHERE username = ?;',
-    readUserEmail: 'SELECT id FROM users WHERE email = ?;',
     createUser: `
-        INSERT INTO users (username, email, password, role) VALUES (?, ?, ?, ?);
+        INSERT INTO users (
+            username,
+            email,
+            password,
+            role,
+            verification_token,
+            verification_token_expires_at
+        ) VALUES (
+            ?,
+            ?,
+            ?,
+            ?,
+            ?,
+            ?
+        );
     `,
     updateUser: `
         UPDATE users
         SET username = ?, email = ?, password = ?, role = ?
         WHERE id = ?;
     `,
-    deleteUser: 'DELETE FROM users WHERE id = ?;'
+    deleteUser: 'DELETE FROM users WHERE id = ?;',
+    verifyToken: `
+        SELECT id, verification_token_expires_at
+        FROM users
+        WHERE verification_token = ?;
+    `,
+    verifyEmail: `
+        UPDATE users
+        SET
+            email_verified = 1,
+            verification_token = NULL,
+            verification_token_expires_at = NULL
+        WHERE id = ?;
+    `
 }
 
+const frontEndUrl = process.env.FRONT_END_URL
+if (!frontEndUrl) throw new Error('FRONT_END_URL not defined in .env')
 const jwtSecret = process.env.JWT_SECRET
-
-if (!jwtSecret) {
-    throw new Error('JWT_SECRET is not defined in environment variables')
-}
+if (!jwtSecret) throw new Error('JWT_SECRET not defined in .env')
 
 const readUsers = async (request, response) => {
     try {
@@ -70,15 +97,37 @@ const createUser = async (request, response) => {
         
         // if (duplicateCheck !== 'pass') return
 
+        const verificationToken = crypto.randomBytes(32).toString('hex')
+        const tokenExpires = new Date(Date.now() + 60 * 60 * 1000)
         const salt = await bcryptjs.genSalt(10)
         const hashedPassword = await bcryptjs.hash(password, salt)
         const [result] = await dbConnection.execute(
             queries.createUser,
-            [username, email, hashedPassword, role]
+            [
+                username,
+                email,
+                hashedPassword,
+                role,
+                verificationToken,
+                tokenExpires
+            ]
         )
+        const verificationLink =
+            `${frontEndUrl}/api/v1/users/verify-email` +
+            `?token=${verificationToken}`
+        const emailContent = registrationEmail(username, verificationLink) 
+
+        await emailTransporter.sendMail({
+            from: process.env.EMAIL_USER,
+            to: email,
+            subject: 'Please confirm your email address',
+            html: emailContent
+        })
 
         return response.status(201).json({
-            message: 'Registered successfully — please sign in',
+            message: `
+                Registered successfully — please check your email to confirm
+            `,
             user: {
                 id: result.insertId,
                 username,
@@ -164,10 +213,41 @@ const deleteUser = async (request, response) => {
     }    
 }
 
+const verifyEmail = async (request, response) => {
+    const { token } = request.query
+
+    try {
+        const [rows] = await dbConnection.execute(queries.verifyToken, [token])
+
+        if (rows.length === 0) {
+            return response.status(400).json({
+                message: 'Invalid or expired verification token'
+            })
+        }
+
+        const user = rows[0]
+
+        if (new Date(user.token_expires) < new Date()) {
+            return response.status(400).json({
+                message: 'Verification token expired'
+            })
+        }
+
+        await dbConnection.execute(queries.verifyEmail, [user.id])
+
+        return response.status(200).json({
+            message: 'Email address verified successfully'
+        })
+    } catch (error) {
+        return handleDbError(response, error)
+    }
+}
+
 export default {
     readUsers,
     readUser,
     createUser,
     updateUser,
-    deleteUser
+    deleteUser,
+    verifyEmail
 }
