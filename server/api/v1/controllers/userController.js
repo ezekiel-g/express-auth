@@ -49,6 +49,18 @@ const queries = {
             verification_token = NULL,
             verification_token_expires_at = NULL
         WHERE id = ?;
+    `,
+    findUserByEmail: `
+        SELECT id, username, email_verified
+        FROM users
+        WHERE email = ?;
+    `,
+    updateVerificationToken: `
+        UPDATE users
+        SET
+            verification_token = ?,
+            verification_token_expires_at = ?
+        WHERE id = ?;
     `
 }
 
@@ -113,8 +125,7 @@ const createUser = async (request, response) => {
             ]
         )
         const verificationLink =
-            `${frontEndUrl}/api/v1/users/verify-email` +
-            `?token=${verificationToken}`
+            `${frontEndUrl}/verify-email?token=${verificationToken}`
         const emailContent = registrationEmail(username, verificationLink) 
 
         await emailTransporter.sendMail({
@@ -227,7 +238,7 @@ const verifyEmail = async (request, response) => {
 
         const user = rows[0]
 
-        if (new Date(user.token_expires) < new Date()) {
+        if (new Date(user.verification_token_expires_at) < new Date()) {
             return response.status(400).json({
                 message: 'Verification token expired'
             })
@@ -243,11 +254,57 @@ const verifyEmail = async (request, response) => {
     }
 }
 
+const resendVerificationEmail = async (request, response) => {
+    const { email } = request.body
+    const successMessage =
+        'If you entered an email address that is pending verification, ' +
+        'a new verification email will be sent to that address'
+    
+    try {
+        const [rows] =
+            await dbConnection.execute(queries.findUserByEmail, [email])
+
+        if (rows.length === 0) {
+            return response.status(200).json({ message: successMessage })
+        }
+
+        const user = rows[0]
+
+        if (user.email_verified) {
+            return response.status(200).json({ message: successMessage })
+        }
+
+        const newToken = crypto.randomBytes(32).toString('hex')
+        const tokenExpires = new Date(Date.now() + 60 * 60 * 1000)
+
+        await dbConnection.execute(
+            queries.updateVerificationToken,
+            [newToken, tokenExpires, user.id]
+        )
+
+        const verificationLink =
+            `${frontEndUrl}/verify-email?token=${newToken}`
+        const emailContent = registrationEmail(user.username, verificationLink)
+
+        await emailTransporter.sendMail({
+            from: process.env.EMAIL_USER,
+            to: email,
+            subject: 'Please confirm your email address',
+            html: emailContent
+        })
+
+        return response.status(200).json({ message: successMessage })
+    } catch (error) {
+        return handleDbError(response, error)
+    }
+}
+
 export default {
     readUsers,
     readUser,
     createUser,
     updateUser,
     deleteUser,
-    verifyEmail
+    verifyEmail,
+    resendVerificationEmail
 }

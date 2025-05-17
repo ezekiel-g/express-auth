@@ -43,20 +43,67 @@ const SignInPage = ({ backEndUrl }) => {
 
         if (!data || typeof data !== 'object' || !data.user) {
             isSigningIn.current = false
+            setSuccessMessages([])
             setErrorMessages([ data?.message || 'Sign-in failed'])
             return
         } else {
             setUser(data.user)
             isSigningIn.current = true
+            setErrorMessages([])
             setSuccessMessages([data.message || 'Signed in successfully'])
             setTimeout(() => { navigate('/') }, 1000)
         }
     }
 
+    const handleResendVerification = async () => {
+        const data = await fetchFromDatabase(
+            `${backEndUrl}/api/v1/users/resend-verification-email`,
+            'POST',
+            'application/json',
+            'same-origin',
+            { email }
+        )
+        
+        if (data && data.message) {
+            if (data.message.includes('If you entered an')) {
+                setErrorMessages([])
+                setSuccessMessages([data.message])
+            } else {
+                setSuccessMessages([])
+                setErrorMessages([data.message])
+            }
+        } else {
+            setSuccessMessages([])
+            setErrorMessages(['Failed to resend verification email'])
+        }
+    }
+
     const successMessageDisplay =
         messageUtility.displaySuccessMessages(successMessages)
-    const errorMessageDisplay =
-        messageUtility.displayErrorMessages(errorMessages)
+
+    let errorMessageDisplay
+    if (errorMessages.includes(
+        'Please verify your email address before signing in'
+    )) {
+        const resolutionLink =
+            <span
+                onClick={handleResendVerification}
+                className={`
+                    bg-transparent
+                    text-primary
+                    text-decoration-underline
+                `}
+                style={{ cursor: 'pointer' }}
+            >
+                Resend verification email
+            </span>
+        errorMessageDisplay = messageUtility.displayErrorMessages(
+            errorMessages,
+            resolutionLink
+        )
+    } else {
+        errorMessageDisplay = messageUtility.displayErrorMessages(errorMessages)
+    }
 
     return (
         <div className="container mt-5 px-5">

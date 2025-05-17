@@ -7,6 +7,7 @@ import RegisterPage from './RegisterPage'
 import SignInPage from './SignInPage'
 import SettingsPage from './SettingsPage'
 import ConfirmationPage from './ConfirmationPage'
+import VerifyEmailPage from './VerifyEmailPage'
 import fetchFromDatabase from '../utilities/fetchFromDatabase.js'
 
 const App = () => {
@@ -48,6 +49,10 @@ const App = () => {
                 <Route
                     path="/confirm"
                     element={<ConfirmationPage backEndUrl={backEndUrl} />}
+                />
+                <Route
+                    path="/verify-email"
+                    element={<VerifyEmailPage backEndUrl={backEndUrl} />}
                 />
                 <Route path="*" element={<Navigate to="/" replace />} />
             </Routes>

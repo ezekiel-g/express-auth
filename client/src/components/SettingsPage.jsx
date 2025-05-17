@@ -108,7 +108,7 @@ const SettingsPage = ({ backEndUrl }) => {
             shouldSubmit.current = false
             setPassword('')
             setReEnteredPassword('')
-            messageUtility.setSuccessMessagesTimeout(
+            messageUtility.setMessagesWithTimeout(
                 newMessages,
                 setSuccessMessages
             )
