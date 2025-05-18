@@ -11,7 +11,7 @@ const getUsers = async () => {
 
 const validateUser = {
     validateUsername: async (username, excludeId = null) => {
-        if (!username) {
+        if (!username || username.trim() === '') {
             return { valid: false, message: 'Username required' }
         }
         const usernameRegex = /^[a-zA-Z_][a-zA-Z0-9._]{2,19}$/
@@ -41,7 +41,7 @@ const validateUser = {
         excludeId = null,
         skipDuplicateCheck = null
     ) => {
-        if (!email) {
+        if (!email || email.trim() === '') {
             return { valid: false, message: 'Email address required' }
         }
         const emailRegex = /^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$/
