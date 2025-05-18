@@ -1,56 +1,48 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useCallback } from 'react' // added useCallback
 import { useNavigate, useSearchParams } from 'react-router-dom'
+import fetchFromDatabase from '../utilities/fetchFromDatabase.js'
 import messageUtility from '../utilities/messageUtility.jsx'
 
 const VerifyEmailPage = ({ backEndUrl }) => {
     const [successMessages, setSuccessMessages] = useState([])
     const [errorMessages, setErrorMessages] = useState([])
-    const hasVerified = useRef(false)
+    const hasConfirmed = useRef(false)
     const navigate = useNavigate()
     const [searchParams] = useSearchParams()
 
-    useEffect(() => {
-        const token = searchParams.get('token')
-
-        if (!token) {
-            setErrorMessages(['Missing verification token'])
+    const verifyAccountByEmail = useCallback(async token => {
+        const data = await fetchFromDatabase(
+            `${backEndUrl}/api/v1/users/verify-account-by-email` +
+            `?token=${token}`
+        )
+        
+        if (!data || data.message.includes('expired')) {
+            setSuccessMessages([])
+            setErrorMessages([
+                data?.message || 'Verification failed'
+            ])
             return
         }
-        if (hasVerified.current) return
-        hasVerified.current = true
 
-        const verifyEmail = async () => {
-            try {
-                const response = await fetch(
-                    `${backEndUrl}/api/v1/users/verify-email?token=${token}`
-                )
+        setErrorMessages([])
+        setSuccessMessages([
+            data.message || 'Email verified successfully'
+        ])
 
-                if (!response.ok) {
-                    const errorData = await response.json()
-                    setSuccessMessages([])
-                    setErrorMessages([
-                        errorData.message || 
-                        'Verification failed'
-                    ])
-                    return
-                }
+        setTimeout(() => navigate('/sign-in'), 2000)
+    }, [backEndUrl, navigate])
 
-                const data = await response.json()
-                setErrorMessages([])
-                setSuccessMessages([
-                    data.message ||
-                    'Email verified successfully'
-                ])
-
-                setTimeout(() => navigate('/sign-in'), 2000)
-            } catch (error) {
-                setSuccessMessages([])
-                setErrorMessages([error.message || 'Verification failed'])
-            }
+    useEffect(() => {
+        const token = searchParams.get('token')
+        if (!token) {
+            setErrorMessages(['Missing token'])
+            return
         }
+        if (hasConfirmed.current) return
+        hasConfirmed.current = true
 
-        verifyEmail()
-    }, [searchParams, backEndUrl, navigate])
+        verifyAccountByEmail(token)
+    }, [searchParams, verifyAccountByEmail])
 
     const successMessageDisplay =
         messageUtility.displaySuccessMessages(successMessages)

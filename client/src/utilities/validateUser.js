@@ -18,11 +18,11 @@ const validateUser = {
         if (!usernameRegex.test(username)) {
             return {
                 valid: false,
-                message: `
-                    Username must be between 3 and 20 characters, start with a
-                    letter or an underscore and contain only letters, numbers,
-                    periods and underscores
-                `
+                message:
+                    'Username must be between 3 and 20 characters, start with' +
+                    'a letter or an underscore and contain only letters, ' +
+                    'numbers periods and underscores'
+
             }
         }
         const duplicateCheck = await checkForDuplicate(
@@ -36,7 +36,11 @@ const validateUser = {
         return { valid: true, message: '' }
     },
 
-    validateEmail: async (email, excludeId = null) => {
+    validateEmail: async (
+        email,
+        excludeId = null,
+        skipDuplicateCheck = null
+    ) => {
         if (!email) {
             return { valid: false, message: 'Email address required' }
         }
@@ -44,22 +48,23 @@ const validateUser = {
         if (!emailRegex.test(email)) {
             return {
                 valid: false,
-                message: `
-                    Email address must contain only letters, numbers, periods,
-                    underscores, hyphens, plus signs and percent signs before
-                    the "@", a domain name after the "@" and a valid domain
-                    extension (e.g. ".com", ".net", ".org") of at least two
-                    letters
-                `
+                message:
+                    'Email address must contain only letters, numbers, ' +
+                    'periods, underscores, hyphens, plus signs and percent ' +
+                    'signs before the "@", a domain name after the "@", and ' +
+                    'a valid domain extension (e.g. ".com", ".net", ".org") ' +
+                    'of at least two letters'
             }
         }
-        const duplicateCheck = await checkForDuplicate(
-            { email },
-            getUsers,
-            excludeId
-        )
-        if (duplicateCheck !== 'pass') {
-            return { valid: false, message: 'Email address taken' }
+        if (skipDuplicateCheck !== 'skipDuplicateCheck') {
+            const duplicateCheck = await checkForDuplicate(
+                { email },
+                getUsers,
+                excludeId
+            )
+            if (duplicateCheck !== 'pass') {
+                return { valid: false, message: 'Email address taken' }
+            }
         }
         return { valid: true, message: '' }
     },
@@ -73,11 +78,10 @@ const validateUser = {
         if (!passwordRegex.test(password)) {
             return {
                 valid: false,
-                message: `
-                    Password must be at least 16 characters and include at least
-                    one lowercase letter, one capital letter, one number and one
-                    symbol (!@#$%^&*)
-                `
+                message:
+                    'Password must be at least 16 characters and include at ' +
+                    'least one lowercase letter, one capital letter, one ' +
+                    'number and one symbol (!@#$%^&*)'
             }
         }
         if (userId) {

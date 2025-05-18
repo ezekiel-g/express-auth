@@ -4,7 +4,8 @@ import dbConnection from '../database/database.js'
 import handleDbError from '../utilities/handleDbError.js'
 import validateSession from '../utilities/validateSession.js'
 import emailTransporter from '../utilities/emailTransporter.js'
-import registrationEmail from '../templates/registrationEmail.js'
+import verificationEmail from '../templates/verificationEmail.js'
+import passwordResetEmail from '../templates/passwordResetEmail.js'
 // import checkForDuplicates from '../utilities/checkForDuplicates.js'
 
 // // There is already validation for dupliate values both
@@ -37,33 +38,46 @@ const queries = {
         WHERE id = ?;
     `,
     deleteUser: 'DELETE FROM users WHERE id = ?;',
-    verifyToken: `
+    verifyVerificationToken: `
         SELECT id, verification_token_expires_at
         FROM users
         WHERE verification_token = ?;
     `,
-    verifyEmail: `
+    verifyAccountByEmail: `
         UPDATE users
         SET
-            email_verified = 1,
+            verified_by_email = 1,
             verification_token = NULL,
             verification_token_expires_at = NULL
         WHERE id = ?;
     `,
-    findUserByEmail: `
-        SELECT id, username, email_verified
-        FROM users
-        WHERE email = ?;
-    `,
+    findUserByEmail: 'SELECT * FROM users WHERE email = ?;',
     updateVerificationToken: `
         UPDATE users
         SET
             verification_token = ?,
             verification_token_expires_at = ?
         WHERE id = ?;
+    `,
+    updatePasswordResetToken: `
+        UPDATE users
+        SET
+            password_reset_token = ?,
+            password_reset_token_expires_at = ?
+        WHERE id = ?;
+    `,
+    updatePasswordByEmail: `
+        UPDATE users
+        SET
+            password = ?,
+            password_reset_token = NULL,
+            password_reset_token_expires_at = NULL
+        WHERE email = ?;
     `
 }
 
+const appName = process.env.APP_NAME
+if (!appName) throw new Error('APP_NAME not defined in .env')
 const frontEndUrl = process.env.FRONT_END_URL
 if (!frontEndUrl) throw new Error('FRONT_END_URL not defined in .env')
 const jwtSecret = process.env.JWT_SECRET
@@ -106,7 +120,6 @@ const createUser = async (request, response) => {
         //     response,
         //     { username, email }
         // )
-        
         // if (duplicateCheck !== 'pass') return
 
         const verificationToken = crypto.randomBytes(32).toString('hex')
@@ -126,12 +139,12 @@ const createUser = async (request, response) => {
         )
         const verificationLink =
             `${frontEndUrl}/verify-email?token=${verificationToken}`
-        const emailContent = registrationEmail(username, verificationLink) 
+        const emailContent = verificationEmail(username, verificationLink) 
 
         await emailTransporter.sendMail({
             from: process.env.EMAIL_USER,
             to: email,
-            subject: 'Please confirm your email address',
+            subject: `Please confirm your email address for ${appName}`,
             html: emailContent
         })
 
@@ -224,15 +237,16 @@ const deleteUser = async (request, response) => {
     }    
 }
 
-const verifyEmail = async (request, response) => {
+const verifyAccountByEmail = async (request, response) => {
     const { token } = request.query
 
     try {
-        const [rows] = await dbConnection.execute(queries.verifyToken, [token])
+        const [rows] =
+            await dbConnection.execute(queries.verifyVerificationToken, [token])
 
         if (rows.length === 0) {
             return response.status(400).json({
-                message: 'Invalid or expired verification token'
+                message: 'Invalid or expired token'
             })
         }
 
@@ -240,11 +254,11 @@ const verifyEmail = async (request, response) => {
 
         if (new Date(user.verification_token_expires_at) < new Date()) {
             return response.status(400).json({
-                message: 'Verification token expired'
+                message: 'Invalid or expired token'
             })
         }
 
-        await dbConnection.execute(queries.verifyEmail, [user.id])
+        await dbConnection.execute(queries.verifyAccountByEmail, [user.id])
 
         return response.status(200).json({
             message: 'Email address verified successfully'
@@ -265,12 +279,16 @@ const resendVerificationEmail = async (request, response) => {
             await dbConnection.execute(queries.findUserByEmail, [email])
 
         if (rows.length === 0) {
+            console.warn(
+                'Verification email resend attempted for unknown email: ' +
+                email
+            )
             return response.status(200).json({ message: successMessage })
         }
 
         const user = rows[0]
 
-        if (user.email_verified) {
+        if (user.verified_by_email) {
             return response.status(200).json({ message: successMessage })
         }
 
@@ -284,16 +302,113 @@ const resendVerificationEmail = async (request, response) => {
 
         const verificationLink =
             `${frontEndUrl}/verify-email?token=${newToken}`
-        const emailContent = registrationEmail(user.username, verificationLink)
+        const emailContent = verificationEmail(user.username, verificationLink)
 
         await emailTransporter.sendMail({
             from: process.env.EMAIL_USER,
             to: email,
-            subject: 'Please confirm your email address',
+            subject: `Please confirm your email address for ${appName}`,
             html: emailContent
         })
 
         return response.status(200).json({ message: successMessage })
+    } catch (error) {
+        return handleDbError(response, error)
+    }
+}
+
+const sendPasswordResetEmail = async (request, response) => {
+    const { email } = request.body
+    const successMessage =
+        'If the email address is associated with an account, ' +
+        'then a password reset link has been sent'
+    
+    try {
+        const [rows] = await dbConnection.execute(
+            queries.findUserByEmail,
+            [email]
+        )
+
+        if (rows.length === 0) {
+            console.warn(`Password reset requested for unknown email: ${email}`)
+            return response.status(200).json({ message: successMessage })
+        }
+
+        const user = rows[0]
+        const resetToken = crypto.randomBytes(32).toString('hex')
+        const tokenExpires = new Date(Date.now() + 60 * 60 * 1000)
+
+        await dbConnection.execute(
+            queries.updatePasswordResetToken,
+            [resetToken, tokenExpires, user.id]
+        )
+
+        const resetLink = `${frontEndUrl}/reset-password?token=${resetToken}`
+        const emailContent = passwordResetEmail(user.username, resetLink)
+
+        await emailTransporter.sendMail({
+            from: process.env.EMAIL_USER,
+            to: email,
+            subject: `Reset your password for ${appName}`,
+            html: emailContent
+        })
+
+        return response.status(200).json({ message: successMessage })
+    } catch (error) {
+        return handleDbError(response, error)
+    }
+}
+
+const resetPassword = async (request, response) => {
+    const { email, newPassword, token } = request.body
+
+    if (!email || !newPassword || !token) {
+        return response.status(400).json({
+            message: 'Token, email address and new password required'
+        })
+    }
+
+    try {
+        const [rows] = await dbConnection.execute(
+            queries.findUserByEmail,
+            [email]
+        )
+        
+        if (rows.length === 0) {
+            return response.status(400).json({
+                message: 'Invalid/expired token or invalid email address'
+            })
+        }
+
+        const user = rows[0]
+        
+        if (
+            user.password_reset_token !== token ||
+            new Date(user.password_reset_token_expires_at) < new Date()
+        ) {
+            return response.status(400).json({
+                message: 'Invalid/expired token or invalid email address'
+            })
+        }
+
+        const salt = await bcryptjs.genSalt(10)
+        const hashedPassword = await bcryptjs.hash(newPassword, salt)
+
+        const [result] = await dbConnection.execute(
+            queries.updatePasswordByEmail,
+            [hashedPassword, email]
+        )
+
+        if (result.affectedRows === 0) {
+            console.warn(`Password reset attempted for unknown email: ${email}`)
+            return response.status(200).json({
+                message: 'Password reset request received'
+            })
+        }
+
+        return response.status(200).json({
+            message: 'Password reset successfully'
+        })
     } catch (error) {
         return handleDbError(response, error)
     }
@@ -305,6 +420,8 @@ export default {
     createUser,
     updateUser,
     deleteUser,
-    verifyEmail,
-    resendVerificationEmail
+    verifyAccountByEmail,
+    resendVerificationEmail,
+    sendPasswordResetEmail,
+    resetPassword
 }
