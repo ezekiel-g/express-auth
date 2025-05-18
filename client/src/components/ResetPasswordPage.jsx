@@ -1,41 +1,46 @@
-import { useState, useEffect, useRef } from 'react'
-import { useNavigate, Link } from 'react-router-dom'
-import useAuthContext from '../contexts/auth/useAuthContext.js'
+import { useState, useEffect } from 'react'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 import fetchFromDatabase from '../utilities/fetchFromDatabase.js'
 import validateUser from '../utilities/validateUser.js'
 import messageUtility from '../utilities/messageUtility.jsx'
 
-const RegisterPage = ({ backEndUrl }) => {
-    const { user } = useAuthContext()
-    const [username, setUsername] = useState('')
-    const [email, setEmail] = useState('')
-    const [password, setPassword] = useState('')
-    const [reEnteredPassword, setReEnteredPassword] = useState('')
+const ResetPasswordPage = ({ backEndUrl }) => {
+    const [email, setEmail] = useState([])
+    const [newPassword, setNewPassword] = useState([])
+    const [reEnteredPassword, setReEnteredPassword] = useState([])
     const [successMessages, setSuccessMessages] = useState([])
     const [errorMessages, setErrorMessages] = useState([])
+    const [searchParams] = useSearchParams()
+    const token = searchParams.get('token')
     const navigate = useNavigate()
-    const isRegistering = useRef(false)
 
     useEffect(() => {
-        if (user && !isRegistering.current) navigate('/')
-    }, [user, navigate])
+        if (!token) {
+            setErrorMessages(['Missing token'])
+            return
+        }
+    }, [searchParams, token])
 
     const handleSubmit = async event => {
         event.preventDefault()
+        setSuccessMessages([])
         setErrorMessages([])
 
         const newErrors = []
 
-        const usernameValid = await validateUser.validateUsername(username)
-        if (!usernameValid.valid) newErrors.push(usernameValid.message)
+        if (!token) newErrors.push('Missing token')
 
-        const emailValid = await validateUser.validateEmail(email)
+        const emailValid = await validateUser.validateEmail(
+            email,
+            null,
+            'skipDuplicateCheck'
+        )
         if (!emailValid.valid) newErrors.push(emailValid.message)
 
-        const passwordValid = await validateUser.validatePassword(password)
+        const passwordValid = await validateUser.validatePassword(newPassword)
         if (!passwordValid.valid) newErrors.push(passwordValid.message)
 
-        if (password !== reEnteredPassword) {
+        if (newPassword !== reEnteredPassword) {
             newErrors.push('Passwords must match')
         }
         if (newErrors.length > 0) {
@@ -44,24 +49,25 @@ const RegisterPage = ({ backEndUrl }) => {
         }
 
         const data = await fetchFromDatabase(
-            `${backEndUrl}/api/v1/users`,
-            'POST',
+            `${backEndUrl}/api/v1/users/reset-password`,
+            'PATCH',
             'application/json',
             'same-origin',
-            { username, email, password }
+            { email, newPassword, token }
         )
         
-        if (!data || typeof data !== 'object') {
-            setErrorMessages(['Registration failed'])
+        if (!data || !data.message) {
+            setErrorMessages(['Unknown error'])
             return
-        } else {
-            isRegistering.current = true
-            setSuccessMessages([
-                data.message ||
-                'Registered successfully — please sign in'
-            ])
-            setTimeout(() => { navigate('/sign-in') }, 2000)
         }
+
+        if (data.message === 'Password reset successfully') {
+            setSuccessMessages([data.message])
+            setTimeout(() => navigate('/sign-in'), 2000)
+            return
+        }
+
+        setErrorMessages([data.message])
     }
 
     const successMessageDisplay =
@@ -73,20 +79,8 @@ const RegisterPage = ({ backEndUrl }) => {
         <div className="container mt-5 px-5">
             {successMessageDisplay}
             {errorMessageDisplay}
-            <h2 className="mb-4">Register</h2>
+            <h2 className="mb-4">Reset Password</h2>
             <form onSubmit={handleSubmit}>
-                <div className="mb-3">
-                    <label htmlFor="username" className="form-label">
-                        Username
-                    </label>
-                    <input
-                        type="text"
-                        className="form-control rounded-0"
-                        id="username"
-                        value={username}
-                        onChange={event => setUsername(event.target.value)}
-                    />
-                </div>
                 <div className="mb-3">
                     <label htmlFor="email" className="form-label">
                         Email address
@@ -101,20 +95,19 @@ const RegisterPage = ({ backEndUrl }) => {
                 </div>
                 <div className="mb-3">
                     <label htmlFor="password" className="form-label">
-                        Password
+                        New password
                     </label>
                     <input
                         type="password"
                         className="form-control rounded-0"
-                        id="password"
-                        value={password}
-                        onChange={event => setPassword(event.target.value)}
+                        id="newPassword"
+                        value={newPassword}
+                        onChange={event => setNewPassword(event.target.value)}
                     />
                 </div>
-
                 <div className="mb-3">
                     <label htmlFor="reEnteredPassword" className="form-label">
-                        Re-enter password
+                        Re-enter new password
                     </label>
                     <input
                         type="password"
@@ -122,7 +115,8 @@ const RegisterPage = ({ backEndUrl }) => {
                         id="reEnteredPassword"
                         value={reEnteredPassword}
                         onChange={
-                            event => setReEnteredPassword(event.target.value)
+                            event =>
+                                setReEnteredPassword(event.target.value)
                         }
                     />
                 </div>
@@ -135,11 +129,8 @@ const RegisterPage = ({ backEndUrl }) => {
                     Submit
                 </button>
             </form>
-            <Link className="nav-link ps-0" to="/sign-in">
-                Have an account? Sign in
-            </Link>
         </div>
     )
 }
 
-export default RegisterPage
+export default ResetPasswordPage

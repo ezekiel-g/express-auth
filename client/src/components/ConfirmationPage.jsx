@@ -16,8 +16,17 @@ const ConfirmationPage = ({ backEndUrl }) => {
     const confirmationType = location.state?.confirmationType
     
     useEffect(() => {
-        if (!confirmationType) navigate('/')
-        if (!user && !isSigningOut.current) navigate('/')
+        if (!confirmationType) {
+            navigate('/')
+            return
+        }
+        const requiresUser = ['enterPassword', 'confirmUserUpdate', 'signOut']
+        if (
+            requiresUser.includes(confirmationType) &&
+            !user && !isSigningOut.current
+        ) {
+            navigate('/')
+        }
     }, [confirmationType, user, navigate])
 
     let question = ''
@@ -104,7 +113,6 @@ const ConfirmationPage = ({ backEndUrl }) => {
         cancelFunction = () => navigate('/settings')
     } else if (confirmationType === 'signOut') {
         question = 'Sign out?'
-        submitButtonName = 'Confirm'
 
         confirmFunction = async () => {
             const data = await fetchFromDatabase(
@@ -120,6 +128,18 @@ const ConfirmationPage = ({ backEndUrl }) => {
         }
 
         cancelFunction = () => navigate('/')
+    } else if (confirmationType === 'confirmPasswordReset') {
+        question = `Send password reset link to ${location.state?.email}?`
+        submitButtonName = 'Confirm'
+
+        confirmFunction = () => {
+            navigate('/sign-in', { state: {
+                confirmedPasswordReset: true,
+                email: location.state?.email
+            } })
+        }
+
+        cancelFunction = () => navigate('/sign-in')
     }
 
     const successMessageDisplay =

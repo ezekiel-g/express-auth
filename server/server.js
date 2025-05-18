@@ -13,7 +13,7 @@ const app = express()
 const port = process.env.PORT || 3000
 const corsOptions = {
     origin: process.env.FRONT_END_URL,
-    methods: ['GET', 'POST', 'PUT', 'DELETE'],
+    methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE'],
     credentials: true
 }
 const __filename = fileURLToPath(import.meta.url)

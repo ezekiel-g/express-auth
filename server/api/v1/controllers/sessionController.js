@@ -47,7 +47,7 @@ const createSession = async (request, response) => {
     try {
         const [rows] = await dbConnection.execute(
             `
-                SELECT id, username, email, password, role, email_verified
+                SELECT id, username, email, password, role, verified_by_email
                 FROM users
                 WHERE email = ?;
             `,
@@ -68,7 +68,7 @@ const createSession = async (request, response) => {
             })
         }
         
-        if (!user.email_verified) {
+        if (!user.verified_by_email) {
             return response.status(403).json({
                 message: 'Please verify your email address before signing in'
             })

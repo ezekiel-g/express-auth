@@ -8,6 +8,7 @@ import SignInPage from './SignInPage'
 import SettingsPage from './SettingsPage'
 import ConfirmationPage from './ConfirmationPage'
 import VerifyEmailPage from './VerifyEmailPage'
+import ResetPasswordPage from './ResetPasswordPage'
 import fetchFromDatabase from '../utilities/fetchFromDatabase.js'
 
 const App = () => {
@@ -53,6 +54,10 @@ const App = () => {
                 <Route
                     path="/verify-email"
                     element={<VerifyEmailPage backEndUrl={backEndUrl} />}
+                />
+                <Route
+                    path="/reset-password"
+                    element={<ResetPasswordPage backEndUrl={backEndUrl} />}
                 />
                 <Route path="*" element={<Navigate to="/" replace />} />
             </Routes>

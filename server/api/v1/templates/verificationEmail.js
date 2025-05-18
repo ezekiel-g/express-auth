@@ -1,4 +1,4 @@
-const registrationEmail = (username, verificationLink) => `
+const verificationEmail = (username, verificationLink) => `
     <!DOCTYPE html>
     <html>
         <body>
@@ -24,4 +24,4 @@ const registrationEmail = (username, verificationLink) => `
     </html>
 `
 
-export default registrationEmail
+export default verificationEmail

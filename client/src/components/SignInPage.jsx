@@ -1,7 +1,8 @@
-import { useState, useEffect, useRef } from 'react'
-import { useNavigate, Link } from 'react-router-dom'
+import { useState, useEffect, useRef, useCallback } from 'react'
+import { useNavigate, useLocation, Link } from 'react-router-dom'
 import useAuthContext from '../contexts/auth/useAuthContext.js'
 import fetchFromDatabase from '../utilities/fetchFromDatabase.js'
+import validateUser from '../utilities/validateUser.js'
 import messageUtility from '../utilities/messageUtility.jsx'
 
 const SignInPage = ({ backEndUrl }) => {
@@ -11,11 +12,9 @@ const SignInPage = ({ backEndUrl }) => {
     const [successMessages, setSuccessMessages] = useState([])
     const [errorMessages, setErrorMessages] = useState([])
     const navigate = useNavigate()
+    const location = useLocation()
     const isSigningIn = useRef(false)
-
-    useEffect(() => {
-        if (user && !isSigningIn.current) navigate('/')
-    }, [user, navigate])
+    const hasConfirmedPasswordReset = useRef(false)
 
     const handleSubmit = async event => {
         event.preventDefault()
@@ -77,6 +76,65 @@ const SignInPage = ({ backEndUrl }) => {
             setErrorMessages(['Failed to resend verification email'])
         }
     }
+
+    const handleSendPasswordReset = useCallback(async emailForPasswordReset => {
+        const data = await fetchFromDatabase(
+            `${backEndUrl}/api/v1/users/send-password-reset-email`,
+            'POST',
+            'application/json',
+            'same-origin',
+            { email: emailForPasswordReset }
+        )
+
+        if (!data || typeof data !== 'object' || !data.message) {
+            setSuccessMessages([])
+            setErrorMessages(['Failed to send password reset email'])
+            return
+        }
+
+        if (data.message.includes('If the email address is associated')) {
+            setErrorMessages([])
+            setSuccessMessages([data.message])
+        } else {
+            setSuccessMessages([])
+            setErrorMessages([data.message])
+        }
+    }, [backEndUrl])
+
+
+    const goToConfirmationPage = async confirmationType => {
+        const emailValid = await validateUser.validateEmail(
+            email,
+            null,
+            'skipDuplicateCheck'
+        )
+        if (!emailValid.valid) {
+            setSuccessMessages([])
+            setErrorMessages([emailValid.message])
+            return null
+        }
+        navigate('/confirm', { state: {
+            confirmationType: confirmationType,
+            email: email
+        } })
+    }
+
+    useEffect(() => {
+        if (user && !isSigningIn.current) {
+            navigate('/')
+            return
+        }
+        if (
+            location.state?.confirmedPasswordReset &&
+            location.state?.email &&
+            !hasConfirmedPasswordReset.current
+        ) {
+            hasConfirmedPasswordReset.current = true
+            handleSendPasswordReset(location.state?.email).finally(() => {
+                navigate(location.pathname, { replace: true, state: {} })
+            })
+        }
+    }, [user, navigate, location, handleSendPasswordReset])
 
     const successMessageDisplay =
         messageUtility.displaySuccessMessages(successMessages)
@@ -144,6 +202,15 @@ const SignInPage = ({ backEndUrl }) => {
                     Sign In
                 </button>
             </form>
+            <span
+                onClick={() => goToConfirmationPage(
+                    'confirmPasswordReset',
+                    { email }
+                )}
+                style={{ cursor: 'pointer' }}
+            >
+                Forgot password?
+            </span>
             <Link className="nav-link ps-0" to="/register">
                 No account? Register
             </Link>

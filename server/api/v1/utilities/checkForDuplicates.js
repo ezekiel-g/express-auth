@@ -2,11 +2,11 @@ import dbConnection from '../database/database.js'
 
 const queries = {
     username: {
-        query: 'SELECT id FROM users WHERE username = ?;',
+        query: 'SELECT id FROM users WHERE username_ci = ?;',
         errorMessage: 'Username taken'
     },
     email: {
-        query: 'SELECT id FROM users WHERE email = ?;',
+        query: 'SELECT id FROM users WHERE email_ci = ?;',
         errorMessage: 'Email address taken'
     }
 }
@@ -17,7 +17,7 @@ const checkForDuplicates = async (response, entries = {}, excludeId = null) => {
     
     for (let i = 0; i < columnNames.length; i++) {
         const columnName = columnNames[i]
-        const value = entries[columnName]
+        const value = entries[columnName]?.toLowerCase()
         
         if (!value) continue
 
