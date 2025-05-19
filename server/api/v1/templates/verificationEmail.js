@@ -2,7 +2,7 @@ const verificationEmail = (username, verificationLink) => `
     <!DOCTYPE html>
     <html>
         <body>
-            <h2>Welcome, ${username}</h2>
+            <h2>Welcome to ${process.env.APP_NAME}, ${username}</h2>
             <p>
                 Thank you for registering. Please verify your email address to
                 complete your registration by clicking this link:

@@ -5,6 +5,7 @@ const userRouter = express.Router()
 
 userRouter.get('/', userController.readUsers)
 userRouter.get('/verify-account-by-email', userController.verifyAccountByEmail)
+userRouter.get('/confirm-email-change', userController.confirmEmailChange)
 userRouter.get('/:id', userController.readUser)
 userRouter.post('/', userController.createUser)
 userRouter.post(
