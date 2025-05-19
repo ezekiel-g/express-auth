@@ -6,6 +6,8 @@ import validateSession from '../utilities/validateSession.js'
 import emailTransporter from '../utilities/emailTransporter.js'
 import verificationEmail from '../templates/verificationEmail.js'
 import passwordResetEmail from '../templates/passwordResetEmail.js'
+import emailChangeEmail from '../templates/emailChangeEmail.js'
+import emailRemovalEmail from '../templates/emailRemovalEmail.js'
 // import checkForDuplicates from '../utilities/checkForDuplicates.js'
 
 // // There is already validation for dupliate values both
@@ -34,11 +36,17 @@ const queries = {
     `,
     updateUser: `
         UPDATE users
-        SET username = ?, email = ?, password = ?, role = ?
+        SET
+            username = ?,
+            email_pending = ?,
+            password = ?,
+            role = ?,
+            email_change_token = ?,
+            email_change_token_expires_at = ?
         WHERE id = ?;
     `,
     deleteUser: 'DELETE FROM users WHERE id = ?;',
-    verifyVerificationToken: `
+    findUserByVerificationToken: `
         SELECT id, verification_token_expires_at
         FROM users
         WHERE verification_token = ?;
@@ -66,13 +74,34 @@ const queries = {
             password_reset_token_expires_at = ?
         WHERE id = ?;
     `,
-    updatePasswordByEmail: `
+    applyPasswordReset: `
         UPDATE users
         SET
             password = ?,
             password_reset_token = NULL,
             password_reset_token_expires_at = NULL
         WHERE email = ?;
+    `,
+    updateEmailChangeToken: `
+        UPDATE users
+        SET
+            password_reset_token = ?,
+            password_reset_token_expires_at = ?
+        WHERE id = ?;
+    `,
+    findUserByEmailChangeToken: `
+        SELECT id, email, email_pending, email_change_token_expires_at
+        FROM users
+        WHERE email_change_token = ?;
+    `,
+    applyEmailChange: `
+        UPDATE users
+        SET
+            email = email_pending,
+            email_pending = NULL,
+            email_change_token = NULL,
+            email_change_token_expires_at = NULL
+        WHERE id = ?;
     `
 }
 
@@ -178,7 +207,6 @@ const updateUser = async (request, response) => {
         }
 
         const updatedUsername = username ?? oldDetails[0].username
-        const updatedEmail = email ?? oldDetails[0].email
         let updatedPassword = password ?? oldDetails[0].password
         const updatedRole = role ?? oldDetails[0].role
 
@@ -189,6 +217,32 @@ const updateUser = async (request, response) => {
         // )
         // if (duplicateCheck !== 'pass') return
 
+        let emailChangeToken = null
+        let tokenExpires = null
+        let emailPending = null
+        if (email !== oldDetails[0].email) {
+            emailChangeToken = crypto.randomBytes(32).toString('hex')
+            tokenExpires = new Date(Date.now() + 60 * 60 * 1000)
+            emailPending = email
+
+            await dbConnection.execute(
+                queries.updateEmailChangeToken,
+                [emailChangeToken, tokenExpires, id]
+            )
+
+            const changeEmailLink =
+                `${frontEndUrl}/change-email?token=${emailChangeToken}`
+            const emailContent =
+                emailChangeEmail(updatedUsername, changeEmailLink)
+
+            await emailTransporter.sendMail({
+                from: process.env.EMAIL_USER,
+                to: email,
+                subject: `Confirm your email address change for ${appName}`,
+                html: emailContent
+            })
+        }
+
         if (password) {
             const salt = await bcryptjs.genSalt(10)
             updatedPassword = await bcryptjs.hash(updatedPassword, salt)
@@ -196,19 +250,33 @@ const updateUser = async (request, response) => {
 
         const [result] = await dbConnection.execute(
             queries.updateUser,
-            [updatedUsername, updatedEmail, updatedPassword, updatedRole, id]
+            [
+                updatedUsername,
+                emailPending,
+                updatedPassword,
+                updatedRole,
+                emailChangeToken,
+                tokenExpires,
+                id
+            ]
         )
 
         if (result.affectedRows === 0) {
             return response.status(404).json({ message: 'No changes detected' })
         }
 
+        let successMessage = 'User updated successfully'
+        if (email !== oldDetails[0].email) {
+            successMessage =
+                successMessage.concat(' — check email to confirm email change')
+        }
+
         return response.status(200).json({
-            message: 'User updated successfully',
+            message: successMessage,
             user: {
                 id,
                 username: updatedUsername,
-                email: updatedEmail,
+                email: oldDetails[0].email,
                 role: updatedRole
             }
         })
@@ -242,7 +310,7 @@ const verifyAccountByEmail = async (request, response) => {
 
     try {
         const [rows] =
-            await dbConnection.execute(queries.verifyVerificationToken, [token])
+            await dbConnection.execute(queries.findUserByVerificationToken, [token])
 
         if (rows.length === 0) {
             return response.status(400).json({
@@ -395,7 +463,7 @@ const resetPassword = async (request, response) => {
         const hashedPassword = await bcryptjs.hash(newPassword, salt)
 
         const [result] = await dbConnection.execute(
-            queries.updatePasswordByEmail,
+            queries.applyPasswordReset,
             [hashedPassword, email]
         )
 
@@ -414,6 +482,51 @@ const resetPassword = async (request, response) => {
     }
 }
 
+const confirmEmailChange = async (request, response) => {
+    const { token } = request.query
+        
+    try {
+        const [rows] = await dbConnection.execute(
+            queries.findUserByEmailChangeToken,
+            [token]
+        )
+
+        if (rows.length === 0) { 
+            return response.status(400).json({
+                message: 'Invalid or expired token'
+            })
+        }
+
+        const user = rows[0]
+        
+        if (
+            !user.email_pending ||
+            new Date(user.email_change_token_expires_at) < new Date()
+        ) {
+            return response.status(400).json({
+                message: 'Invalid or expired token'
+            })
+        }
+
+        const oldEmail = user.email
+
+        await dbConnection.execute(queries.applyEmailChange, [user.id])
+
+        await emailTransporter.sendMail({
+            from: process.env.EMAIL_USER,
+            to: oldEmail,
+            subject: `Your email address has been removed from ${appName}`,
+            html: emailRemovalEmail()
+        })
+
+        return response.status(200).json({
+            message: 'Email address updated successfully'
+        })
+    } catch (error) {
+        return handleDbError(response, error)
+    }
+}
+
 export default {
     readUsers,
     readUser,
@@ -423,5 +536,6 @@ export default {
     verifyAccountByEmail,
     resendVerificationEmail,
     sendPasswordResetEmail,
-    resetPassword
+    resetPassword,
+    confirmEmailChange
 }

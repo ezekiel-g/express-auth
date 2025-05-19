@@ -4,9 +4,12 @@ const emailChangeEmail = (username, confirmationLink) => `
         <body>
             <h2>Email change requested</h2>
             <p>
-                Hi ${username}, we received a request to change the email
-                address associated with your account. To confirm this change,
-                please click this link:
+                Hello ${username},
+            </p>
+            <p>
+                We received a request to change the email address associated
+                with your account. To confirm this change, please click this
+                link:
             </p>
             <p>
                 <a href="${confirmationLink}">Confirm email change</a>

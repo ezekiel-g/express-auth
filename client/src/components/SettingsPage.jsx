@@ -20,6 +20,7 @@ const SettingsPage = ({ backEndUrl }) => {
     const [successMessages, setSuccessMessages] = useState([])
     const [errorMessages, setErrorMessages] = useState([])
     const shouldSubmit = useRef(false)
+    const hasSubmittedSecond = useRef(false)
     const navigate = useNavigate()
     const location = useLocation()
 
@@ -79,6 +80,9 @@ const SettingsPage = ({ backEndUrl }) => {
     }
 
     const handleSecondSubmit = useCallback(async updated => {
+        if (hasSubmittedSecond.current) return
+        hasSubmittedSecond.current = true
+
         const updatedUser = Object.assign({}, user, updated)
         const data = await fetchWithRefresh(
             `${backEndUrl}/api/v1/users/${user.id}`,
@@ -87,31 +91,31 @@ const SettingsPage = ({ backEndUrl }) => {
             'include',
             updatedUser
         )
-
+        console.log(data)
         if (!data || typeof data !== 'object') {
             setErrorMessages([data?.message || 'Update failed'])
             return
         } else {
             const newMessages = []
 
-            if (updated.username) {
+            if (data.user.username !== user.username) {
                 newMessages.push('Username updated successfully')
             }
-            if (updated.email) {
-                newMessages.push('Email address updated successfully')
+            if (data.message.includes('confirm email change')) {
+                newMessages.push(
+                    'Email address update pending email confirmation'
+                )
             }
             if (updated.password) {
                 newMessages.push('Password updated successfully')
             }
 
+            updatedUser.email = user.email
             setUser(updatedUser)
             shouldSubmit.current = false
             setPassword('')
             setReEnteredPassword('')
-            messageUtility.setMessagesWithTimeout(
-                newMessages,
-                setSuccessMessages
-            )
+            setSuccessMessages(newMessages)
         }
 
         setCanEditSettings(false)

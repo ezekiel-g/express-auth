@@ -4,8 +4,12 @@ const passwordResetEmail = (username, resetLink) => `
         <body>
             <h2>Password reset requested</h2>
             <p>
-                Hi ${username}, we received a request to reset your password.
-                You can reset your password by clicking this link:
+                Hello ${username},
+            </p>
+            <p>
+                We received a request to reset the password for your account
+                with ${process.env.APP_NAME}. You can reset your password by
+                clicking this link:
             </p>
             <p>
                 <a href="${resetLink}">Reset your password</a>
