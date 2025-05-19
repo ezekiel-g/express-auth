@@ -19,9 +19,9 @@ const validateUser = {
             return {
                 valid: false,
                 message:
-                    'Username must be between 3 and 20 characters, start with' +
-                    'a letter or an underscore and contain only letters, ' +
-                    'numbers periods and underscores'
+                    'Username must be between 3 and 20 characters, start ' +
+                    'with a letter or an underscore and contain only ' +
+                    'letters, numbers periods and underscores'
 
             }
         }
