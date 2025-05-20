@@ -9,6 +9,9 @@ const SignInPage = ({ backEndUrl }) => {
     const { user, setUser } = useAuthContext()
     const [email, setEmail] = useState('')
     const [password, setPassword] = useState('')
+    const [totpCode, setTotpCode] = useState('')
+    const [totpRequired, setTotpRequired] = useState(false)
+    const [userIdForTotp, setUserIdForTotp] = useState(null)
     const [successMessages, setSuccessMessages] = useState([])
     const [errorMessages, setErrorMessages] = useState([])
     const navigate = useNavigate()
@@ -16,10 +19,11 @@ const SignInPage = ({ backEndUrl }) => {
     const isSigningIn = useRef(false)
     const hasConfirmedPasswordReset = useRef(false)
 
-    const handleSubmit = async event => {
+    const handleEmailPasswordSubmit = async event => {
         event.preventDefault()
         if (isSigningIn.current) return
         isSigningIn.current = true
+        setSuccessMessages([])
         setErrorMessages([])
 
         const newErrors = []
@@ -27,8 +31,8 @@ const SignInPage = ({ backEndUrl }) => {
         if (email.trim() === '') newErrors.push('Email address required')
         if (!password) newErrors.push('Password required')
         if (newErrors.length > 0) {
-            setErrorMessages(newErrors)
             isSigningIn.current = false
+            setErrorMessages(newErrors)
             return
         }
 
@@ -40,18 +44,71 @@ const SignInPage = ({ backEndUrl }) => {
             { email, password }
         )
 
-        if (!data || typeof data !== 'object' || !data.user) {
+        if (!data || typeof data !== 'object') {
             isSigningIn.current = false
             setSuccessMessages([])
-            setErrorMessages([ data?.message || 'Sign-in failed'])
+            setErrorMessages([data?.message || 'Sign-in failed'])
             return
-        } else {
-            setUser(data.user)
-            isSigningIn.current = true
-            setErrorMessages([])
-            setSuccessMessages([data.message || 'Signed in successfully'])
-            setTimeout(() => { navigate('/') }, 1000)
         }
+        
+        if (data.userId) {
+            setUserIdForTotp(data.userId)
+            setTotpRequired(true)
+            isSigningIn.current = false
+            setErrorMessages([
+                data.message ||
+                'Please provide your TOTP code'
+            ])
+            return
+        }
+
+        setUser(data.user)
+        isSigningIn.current = true
+        setErrorMessages([])
+        setSuccessMessages([data.message || 'Signed in successfully'])
+        setTimeout(() => { navigate('/') }, 1000)
+    }
+
+    const handleTotpSubmit = async event => {
+        event.preventDefault()
+        if (isSigningIn.current) return
+        isSigningIn.current = true
+        setSuccessMessages([])
+        setErrorMessages([])
+
+        if (!totpCode.trim()) {
+            isSigningIn.current = false
+            setErrorMessages(['TOTP code required'])
+            return
+        }
+
+        if (totpCode.length < 6) {
+            isSigningIn.current = false
+            setErrorMessages(['TOTP code must be 6 digits'])
+            return
+        }
+
+        const data = await fetchFromDatabase(
+            `${backEndUrl}/api/v1/sessions/verify-totp`,
+            'POST',
+            'application/json',
+            'include',
+            { userId: userIdForTotp, totpCode }
+        )
+
+        if (!data || data.message !== 'Signed in successfully') {
+            isSigningIn.current = false
+            setSuccessMessages([])
+            setErrorMessages([data?.message || 'Invalid TOTP code'])
+            return
+        }
+
+        setUser(data.user)
+        setTotpRequired(false)
+        isSigningIn.current = true
+        setErrorMessages([])
+        setSuccessMessages([data.message])
+        setTimeout(() => { navigate('/') }, 1000)
     }
 
     const handleResendVerification = async () => {
@@ -136,10 +193,35 @@ const SignInPage = ({ backEndUrl }) => {
         }
     }, [user, navigate, location, handleSendPasswordReset])
 
+    const handleSubmit =
+        !totpRequired ? handleEmailPasswordSubmit : handleTotpSubmit
+
+    let totpDisplay = null
+    
+    if (totpRequired && userIdForTotp) {
+        totpDisplay =
+            <div className="mb-3">
+                <label htmlFor="totp-code" className="form-label">
+                    TOTP code from authenticator app:
+                </label>
+                <input
+                    type="text"
+                    className="form-control text-center rounded-0 mb-3"
+                    id="totp-code"
+                    value={totpCode}
+                    onChange={event => setTotpCode(event.target.value)}
+                    maxLength="6"
+                    placeholder="123456"
+                    style={{ maxWidth: '200px' }}
+                />
+            </div>
+    }
+    
     const successMessageDisplay =
         messageUtility.displaySuccessMessages(successMessages)
 
     let errorMessageDisplay
+
     if (errorMessages.includes(
         'Please verify your email address before signing in'
     )) {
@@ -193,6 +275,7 @@ const SignInPage = ({ backEndUrl }) => {
                         onChange={event => setPassword(event.target.value)}
                     />
                 </div>
+                {totpDisplay}
 
                 <br />
                 <button

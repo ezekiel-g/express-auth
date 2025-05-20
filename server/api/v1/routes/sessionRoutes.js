@@ -5,6 +5,7 @@ const sessionRouter = express.Router()
 
 sessionRouter.get('/', sessionController.readSession)
 sessionRouter.post('/', sessionController.createSession)
+sessionRouter.post('/verify-totp', sessionController.verifyTotp)
 sessionRouter.delete('/', sessionController.deleteSession)
 
 export default sessionRouter

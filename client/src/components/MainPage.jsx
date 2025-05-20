@@ -3,13 +3,9 @@ import useAuthContext from '../contexts/auth/useAuthContext.js'
 const MainPage = () => {
     const { user } = useAuthContext()
 
-    let intro = ''
-
-    if (!user) {
-        intro = 'Hello, please sign in to continue'
-    } else {
-        intro = `Hello, ${user.username}`
-    }
+    const intro = !user
+        ? 'Hello, please sign in to continue'
+        : `Hello, ${user.username}`
 
     return (
         <div className="container mt-4">
