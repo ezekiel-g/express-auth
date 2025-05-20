@@ -1,4 +1,4 @@
-import { Link, useNavigate } from 'react-router-dom'
+import { useNavigate, Link } from 'react-router-dom'
 import useAuthContext from '../contexts/auth/useAuthContext.js'
 
 const Navbar = () => {
@@ -11,8 +11,8 @@ const Navbar = () => {
         linksRight =
             <div>
                 <Link
-                    className="nav-link d-inline-block me-3"
                     to="/settings"
+                    className="nav-link d-inline-block me-3"
                 >
                     Settings
                 </Link>
@@ -32,12 +32,12 @@ const Navbar = () => {
         linksRight =
         <div>
             <Link
-                className="nav-link d-inline-block me-3"
                 to="/sign-in"
+                className="nav-link d-inline-block me-3"
             >
                 Sign In
             </Link>
-            <Link className="nav-link d-inline-block" to="/register">
+            <Link to="/register" className="nav-link d-inline-block">
                 Register
             </Link>
         </div>
@@ -46,7 +46,7 @@ const Navbar = () => {
     return (
         <nav className="navbar px-2 py-3 border-bottom">
             <div className="container-fluid d-flex justify-content-between">
-                <Link className="nav-link" to="/">Home</Link>
+                <Link to="/" className="nav-link">Home</Link>
                 {linksRight}
             </div>
         </nav>

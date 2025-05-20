@@ -135,7 +135,7 @@ const RegisterPage = ({ backEndUrl }) => {
                     Submit
                 </button>
             </form>
-            <Link className="nav-link ps-0" to="/sign-in">
+            <Link to="/sign-in" className="nav-link ps-0">
                 Have an account? Sign in
             </Link>
         </div>

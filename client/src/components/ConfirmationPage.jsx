@@ -37,7 +37,7 @@ const ConfirmationPage = ({ backEndUrl }) => {
 
     if (confirmationType === 'enterPassword') {
         question = 'Enter password to continue'
-        contentDisplay = (
+        contentDisplay =
             <div className="mb-3">
                 <input
                     type="password"
@@ -47,7 +47,6 @@ const ConfirmationPage = ({ backEndUrl }) => {
                     onChange={event => setPassword(event.target.value)}
                 />
             </div>
-        )
         submitButtonName = 'Submit'
 
         confirmFunction = async () => {
@@ -130,7 +129,6 @@ const ConfirmationPage = ({ backEndUrl }) => {
         cancelFunction = () => navigate('/')
     } else if (confirmationType === 'confirmPasswordReset') {
         question = `Send password reset link to ${location.state?.email}?`
-        submitButtonName = 'Confirm'
 
         confirmFunction = () => {
             navigate('/sign-in', { state: {
@@ -140,6 +138,22 @@ const ConfirmationPage = ({ backEndUrl }) => {
         }
 
         cancelFunction = () => navigate('/sign-in')
+    } else if (confirmationType === 'turnOffTwoFactor') {
+        question = 'Remove two-factor authentication?'
+        contentDisplay =
+            <p>
+                This will erase your current 2FA setup, and you will need to
+                scan a new QR code to set up 2FA again
+            </p>
+        confirmFunction = () => {
+            navigate('/settings/two-factor-authentication', {
+                replace: true,
+                state: { confirmedTwoFactorOff: true }
+            })
+
+        }    
+
+        cancelFunction = () => navigate(-1)
     }
 
     const successMessageDisplay =

@@ -6,6 +6,7 @@ import MainPage from './MainPage'
 import RegisterPage from './RegisterPage'
 import SignInPage from './SignInPage'
 import SettingsPage from './SettingsPage'
+import TwoFactorPage from './TwoFactorPage.jsx'
 import ConfirmationPage from './ConfirmationPage'
 import VerifyEmailPage from './VerifyEmailPage'
 import ResetPasswordPage from './ResetPasswordPage'
@@ -13,7 +14,7 @@ import ChangeEmailPage from './ChangeEmailPage.jsx'
 import fetchFromDatabase from '../utilities/fetchFromDatabase.js'
 
 const App = () => {
-    const { setUser } = useAuthContext()
+    const { setUser, setLoading } = useAuthContext()
     const backEndUrl = import.meta.env.VITE_BACK_END_URL
 
     useEffect(() => {
@@ -24,12 +25,19 @@ const App = () => {
                 'application/json',
                 'include'
             )
-            if (!data || typeof data !== 'object' || !data.user) return
+
+            if (!data?.user) {
+                setUser(null)
+                setLoading(false)
+                return
+            }
+
             setUser(data.user)
+            setLoading(false)
         }
 
         checkIfSignedIn()
-    }, [backEndUrl, setUser])
+    }, [backEndUrl, setUser, setLoading])
 
     return (
         <>
@@ -47,6 +55,10 @@ const App = () => {
                 <Route
                     path="/settings"
                     element={<SettingsPage backEndUrl={backEndUrl} />}
+                />
+                <Route
+                    path="/settings/two-factor-authentication"
+                    element={<TwoFactorPage backEndUrl={backEndUrl} />}
                 />
                 <Route
                     path="/confirm"

@@ -1,8 +1,11 @@
 import bcryptjs from 'bcryptjs'
 import crypto from 'crypto'
+import otplib from 'otplib'
+import qrcode from 'qrcode'
 import dbConnection from '../database/database.js'
 import handleDbError from '../utilities/handleDbError.js'
 import validateSession from '../utilities/validateSession.js'
+import encryptionUtility from '../utilities/encryptionUtility.js'
 import emailTransporter from '../utilities/emailTransporter.js'
 import verificationEmail from '../templates/verificationEmail.js'
 import passwordResetEmail from '../templates/passwordResetEmail.js'
@@ -101,6 +104,15 @@ const queries = {
             email_pending = NULL,
             email_change_token = NULL,
             email_change_token_expires_at = NULL
+        WHERE id = ?;
+    `,
+    setTotpAuth: `
+        UPDATE users
+        SET
+            totp_auth_on = ?,
+            totp_auth_secret = ?,
+            totp_auth_init_vector = ?,
+            totp_auth_tag = ?
         WHERE id = ?;
     `
 }
@@ -527,6 +539,76 @@ const confirmEmailChange = async (request, response) => {
     }
 }
 
+const getTotpSecret = async (request, response) => {
+    const { id } = request.params
+
+    try {
+        validateSession(request)
+
+        const [userRows] = await dbConnection.execute(queries.readUser, [id])
+        const totpSecret = otplib.authenticator.generateSecret()
+        const totpUri = otplib.authenticator.keyuri(
+            userRows[0].email,
+            appName,
+            totpSecret
+        )
+        const qrCodeImage = await qrcode.toDataURL(totpUri)
+        
+
+        return response.status(200).json({ totpSecret, qrCodeImage })
+    } catch (error) {
+        return response.status(401).json({ message: error.message })
+    }
+}
+
+const setTotpAuth = async (request, response) => {
+    const { id } = request.params
+    const { totpAuthOn, totpSecret, totpCode } = request.body    
+
+    try {
+        validateSession(request, id)
+
+        if (!totpAuthOn) {
+            await dbConnection.execute(
+                queries.setTotpAuth,
+                [0, null, null, null, id]
+            )
+
+            return response.status(200).json({
+                message: 'Two-factor authentication disabled successfully'
+            })
+        }
+
+        if (!totpSecret || !totpCode) {
+            return response.status(400).json({
+                message: 'Missing required 2FA fields'
+            })
+        }
+
+        const isValid = otplib.authenticator.check(totpCode, totpSecret)
+
+        if (!isValid) {
+            return response.status(400).json({
+                message: 'Invalid authentication code'
+            })
+        }
+
+        const { encryptedTotpSecret, initVector, authTag } =
+            encryptionUtility.encryptTotpSecret(totpSecret)
+
+        await dbConnection.execute(
+            queries.setTotpAuth,
+            [1, encryptedTotpSecret, initVector, authTag, id]
+        )
+
+        return response.status(200).json({
+            message: 'Two-factor authentication enabled successfully'
+        })
+    } catch (error) {
+        return handleDbError(response, error)
+    }
+}
+
 export default {
     readUsers,
     readUser,
@@ -537,5 +619,7 @@ export default {
     resendVerificationEmail,
     sendPasswordResetEmail,
     resetPassword,
-    confirmEmailChange
+    confirmEmailChange,
+    getTotpSecret,
+    setTotpAuth
 }
