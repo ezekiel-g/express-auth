@@ -6,6 +6,7 @@ const userRouter = express.Router()
 userRouter.get('/', userController.readUsers)
 userRouter.get('/verify-account-by-email', userController.verifyAccountByEmail)
 userRouter.get('/confirm-email-change', userController.confirmEmailChange)
+userRouter.get('/:id/get-totp-secret', userController.getTotpSecret)
 userRouter.get('/:id', userController.readUser)
 userRouter.post('/', userController.createUser)
 userRouter.post(
@@ -18,6 +19,7 @@ userRouter.post(
 )
 userRouter.put('/:id', userController.updateUser)
 userRouter.patch('/reset-password', userController.resetPassword)
+userRouter.patch('/:id/set-totp-auth', userController.setTotpAuth)
 userRouter.delete('/:id', userController.deleteUser)
 
 export default userRouter

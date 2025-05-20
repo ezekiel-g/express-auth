@@ -10,9 +10,11 @@ CREATE TABLE users (
     role VARCHAR(24) DEFAULT 'user' NOT NULL,
     verified_by_email TINYINT DEFAULT 0 NOT NULL,
     account_active TINYINT DEFAULT 1 NOT NULL,
-    two_factor_on TINYINT DEFAULT 0 NOT NULL,
-    two_factor_secret VARCHAR(64),
-    two_factor_backup_codes JSON,
+    totp_auth_on TINYINT DEFAULT 0 NOT NULL,
+    totp_auth_secret VARCHAR(255) CHARACTER SET ascii,
+    totp_auth_init_vector VARCHAR(255) CHARACTER SET ascii,
+    totp_auth_tag VARCHAR(255) CHARACTER SET ascii,
+    totp_auth_backup_codes JSON,
     verification_token VARCHAR(64) UNIQUE,
     verification_token_expires_at TIMESTAMP,
     password_reset_token VARCHAR(64) UNIQUE,
@@ -37,8 +39,8 @@ CREATE TABLE users (
         CHECK (verified_by_email IN (0, 1)),
     CONSTRAINT account_active_0_or_1
         CHECK (account_active IN (0, 1)),
-    CONSTRAINT two_factor_on_0_or_1
-        CHECK (two_factor_on IN (0, 1)),
+    CONSTRAINT totp_auth_on_0_or_1
+        CHECK (totp_auth_on IN (0, 1)),
     CONSTRAINT verification_token_length
         CHECK (
             verification_token IS NULL 
@@ -106,7 +108,7 @@ BEGIN
             SET MESSAGE_TEXT = 'Email and pending email must not be the same';
     END IF;
 
-    IF NEW.two_factor_on = 1 AND NEW.two_factor_secret IS NULL THEN
+    IF NEW.totp_auth_on = 1 AND NEW.totp_auth_secret IS NULL THEN
         SIGNAL SQLSTATE '45000'
             SET MESSAGE_TEXT = '2FA enabled without secret';
     END IF;
@@ -176,7 +178,7 @@ BEGIN
             SET MESSAGE_TEXT = 'Email and pending email must not be the same';
     END IF;
 
-    IF NEW.two_factor_on = 1 AND NEW.two_factor_secret IS NULL THEN
+    IF NEW.totp_auth_on = 1 AND NEW.totp_auth_secret IS NULL THEN
         SIGNAL SQLSTATE '45000'
             SET MESSAGE_TEXT = '2FA enabled without secret';
     END IF;

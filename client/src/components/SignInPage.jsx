@@ -211,7 +211,7 @@ const SignInPage = ({ backEndUrl }) => {
             >
                 Forgot password?
             </span>
-            <Link className="nav-link ps-0" to="/register">
+            <Link to="/register" className="nav-link ps-0">
                 No account? Register
             </Link>
         </div>

@@ -22,7 +22,7 @@ const readSession = async (request, response) => {
 
         const [rows] = await dbConnection.execute(
             `
-                SELECT id, username, email, role
+                SELECT id, username, email, role, totp_auth_on
                 FROM users
                 WHERE id = ?;
             `,

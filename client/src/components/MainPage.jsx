@@ -5,10 +5,10 @@ const MainPage = () => {
 
     let intro = ''
 
-    if (user) {
-        intro = `Hello, ${user.username}`
-    } else {
+    if (!user) {
         intro = 'Hello, please sign in to continue'
+    } else {
+        intro = `Hello, ${user.username}`
     }
 
     return (

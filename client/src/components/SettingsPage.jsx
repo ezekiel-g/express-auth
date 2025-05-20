@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
-import { useNavigate, useLocation } from 'react-router-dom'
+import { useNavigate, useLocation, Link } from 'react-router-dom'
 import useAuthContext from '../contexts/auth/useAuthContext.js'
 import fetchWithRefresh from '../utilities/fetchWithRefresh.js'
 import validateUser from '../utilities/validateUser.js'
@@ -78,7 +78,7 @@ const SettingsPage = ({ backEndUrl }) => {
             }
         })
     }
-
+    
     const handleSecondSubmit = useCallback(async updated => {
         if (hasSubmittedSecond.current) return
         hasSubmittedSecond.current = true
@@ -91,7 +91,7 @@ const SettingsPage = ({ backEndUrl }) => {
             'include',
             updatedUser
         )
-        console.log(data)
+        
         if (!data || typeof data !== 'object') {
             setErrorMessages([data?.message || 'Update failed'])
             return
@@ -175,14 +175,28 @@ const SettingsPage = ({ backEndUrl }) => {
         setErrorMessages([])
     }
 
-    let passwordLabel = ''
-    let passwordPlaceholder = ''
+    const passwordLabel = !canEditSettings ? 'Password' : 'New password'
+    let passwordPlaceholder = '****************'
     let reEnteredPasswordDisplay = null
+    const twoFactorStatus = !user?.totp_auth_on ? 'OFF' : 'ON'
+    let twoFactorLink = null
     let buttonDisplay = <></>
-    let inputClasses = ''
+    let inputClasses = 'form-control rounded-0'
 
-    if (canEditSettings) {
-        passwordLabel = 'New password'
+    if (!canEditSettings) {
+        buttonDisplay =
+            <div>
+                <button 
+                    type="button"
+                    className="btn btn-primary mb-3 rounded-0"
+                    onClick={() => goToConfirmationPage('enterPassword')}
+                >
+                    Edit
+                </button>
+            </div>
+        inputClasses =
+            'form-control rounded-0 bg-secondary-subtle border-secondary'
+    } else {
         reEnteredPasswordDisplay =
             <div className="mb-3">
                 <label
@@ -220,23 +234,14 @@ const SettingsPage = ({ backEndUrl }) => {
                     Cancel
                 </button>
             </div>
-        inputClasses = 'form-control rounded-0'
+        twoFactorLink =
+            <Link
+                to="/settings/two-factor-authentication"
+                className="nav-link text-decoration-underline"
+            >
+                Update 2FA
+            </Link>
         passwordPlaceholder = 'Leave blank to keep password unchanged'
-    } else {
-        passwordLabel = 'Password'
-        buttonDisplay =
-            <div>
-                <button 
-                    type="button"
-                    className="btn btn-primary mb-3 rounded-0"
-                    onClick={() => goToConfirmationPage('enterPassword')}
-                >
-                    Edit
-                </button>
-            </div>
-        inputClasses =
-            'form-control rounded-0 bg-secondary-subtle border-secondary'
-        passwordPlaceholder = '****************'
     }
 
     const successMessageDisplay =
@@ -293,7 +298,9 @@ const SettingsPage = ({ backEndUrl }) => {
                     />
                 </div>
                 {reEnteredPasswordDisplay}
-
+                <div>
+                    Two-factor authentication:{' '}{twoFactorStatus}{twoFactorLink}
+                </div>
                 <br />
                 {buttonDisplay}
             </form>
