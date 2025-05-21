@@ -1,32 +1,32 @@
-import { useState, useEffect, useRef, useCallback } from 'react' // added useCallback
+import { useState, useEffect, useRef, useCallback  } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
-import fetchFromDatabase from '../utilities/fetchFromDatabase.js'
-import messageUtility from '../utilities/messageUtility.jsx'
+import fetchFromDatabase from '../../../util/fetchFromDatabase.js'
+import messageUtility from '../../../util/messageUtility.jsx'
 
-const VerifyEmailPage = ({ backEndUrl }) => {
+const ChangeEmailPage = ({ backEndUrl }) => {
     const [successMessages, setSuccessMessages] = useState([])
     const [errorMessages, setErrorMessages] = useState([])
     const hasConfirmed = useRef(false)
     const navigate = useNavigate()
     const [searchParams] = useSearchParams()
 
-    const verifyAccountByEmail = useCallback(async token => {
+    const handleChangeEmailSubmit = useCallback(async token => {
         const data = await fetchFromDatabase(
-            `${backEndUrl}/api/v1/users/verify-account-by-email` +
+            `${backEndUrl}/api/v1/users/confirm-email-change` +
             `?token=${token}`
         )
-        
+
         if (!data || data.message.includes('expired')) {
             setSuccessMessages([])
             setErrorMessages([
-                data?.message || 'Verification failed'
+                data?.message || 'Email change confirmation failed'
             ])
             return
         }
 
         setErrorMessages([])
         setSuccessMessages([
-            data.message || 'Email verified successfully'
+            data.message || 'Email address updated successfully'
         ])
 
         setTimeout(() => navigate('/sign-in'), 2000)
@@ -41,8 +41,8 @@ const VerifyEmailPage = ({ backEndUrl }) => {
         if (hasConfirmed.current) return
         hasConfirmed.current = true
 
-        verifyAccountByEmail(token)
-    }, [searchParams, verifyAccountByEmail])
+        handleChangeEmailSubmit(token)
+    }, [searchParams, handleChangeEmailSubmit])
 
     const successMessageDisplay =
         messageUtility.displaySuccessMessages(successMessages)
@@ -57,4 +57,4 @@ const VerifyEmailPage = ({ backEndUrl }) => {
     )
 }
 
-export default VerifyEmailPage
+export default ChangeEmailPage

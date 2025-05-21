@@ -15,7 +15,7 @@ const emailRemovalEmail = () => `
                 If you made this change, no further action is needed.
             </p>
             <p>
-                If you did **not** make this change, your account may have been
+                If you did *not* make this change, your account may have been
                 updated without your knowledge. Please contact
                 ${process.env.EMAIL_CONTACT}.
             </p>

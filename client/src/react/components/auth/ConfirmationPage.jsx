@@ -1,9 +1,9 @@
 import { useState, useEffect, useRef } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
 import bcryptjs from 'bcryptjs'
-import useAuthContext from '../contexts/auth/useAuthContext.js'
-import messageUtility from '../utilities/messageUtility.jsx'
-import fetchFromDatabase from '../utilities/fetchFromDatabase.js'
+import useAuthContext from '../../contexts/auth/useAuthContext.js'
+import messageUtility from '../../../util/messageUtility.jsx'
+import fetchFromDatabase from '../../../util/fetchFromDatabase.js'
 
 const ConfirmationPage = ({ backEndUrl }) => {
     const { user, setUser, setCanEditSettings } = useAuthContext()
