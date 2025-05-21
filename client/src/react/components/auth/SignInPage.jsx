@@ -1,9 +1,9 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { useNavigate, useLocation, Link } from 'react-router-dom'
-import useAuthContext from '../contexts/auth/useAuthContext.js'
-import fetchFromDatabase from '../utilities/fetchFromDatabase.js'
-import validateUser from '../utilities/validateUser.js'
-import messageUtility from '../utilities/messageUtility.jsx'
+import useAuthContext from '../../contexts/auth/useAuthContext.js'
+import fetchFromDatabase from '../../../util/fetchFromDatabase.js'
+import validateUser from '../../../util/validateUser.js'
+import messageUtility from '../../../util/messageUtility.jsx'
 
 const SignInPage = ({ backEndUrl }) => {
     const { user, setUser } = useAuthContext()

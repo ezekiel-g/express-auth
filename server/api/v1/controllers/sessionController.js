@@ -1,9 +1,9 @@
 import bcryptjs from 'bcryptjs'
 import jsonwebtoken from 'jsonwebtoken'
 import { authenticator } from 'otplib'
-import dbConnection from '../database/database.js'
-import validateSession from '../utilities/validateSession.js'
-import encryptionUtility from '../utilities/encryptionUtility.js'
+import dbConnection from '../db/dbConnection.js'
+import validateSession from '../util/validateSession.js'
+import encryptionUtility from '../util/encryptionUtility.js'
 
 const nodeEnv = process.env.NODE_ENV
 if (!nodeEnv) throw new Error('NODE_ENV not defined in .env')

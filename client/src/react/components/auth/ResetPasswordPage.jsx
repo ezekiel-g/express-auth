@@ -1,8 +1,8 @@
 import { useState, useEffect } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
-import fetchFromDatabase from '../utilities/fetchFromDatabase.js'
-import validateUser from '../utilities/validateUser.js'
-import messageUtility from '../utilities/messageUtility.jsx'
+import fetchFromDatabase from '../../../util/fetchFromDatabase.js'
+import validateUser from '../../../util/validateUser.js'
+import messageUtility from '../../../util/messageUtility.jsx'
 
 const ResetPasswordPage = ({ backEndUrl }) => {
     const [email, setEmail] = useState([])

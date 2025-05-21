@@ -1,8 +1,8 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
-import useAuthContext from '../contexts/auth/useAuthContext.js'
-import fetchFromDatabase from '../utilities/fetchFromDatabase.js'
-import messageUtility from '../utilities/messageUtility.jsx'
+import useAuthContext from '../../contexts/auth/useAuthContext.js'
+import fetchFromDatabase from '../../../util/fetchFromDatabase.js'
+import messageUtility from '../../../util/messageUtility.jsx'
 
 const TwoFactorPage = ({ backEndUrl }) => {
     const { user, setUser } = useAuthContext()
@@ -56,7 +56,8 @@ const TwoFactorPage = ({ backEndUrl }) => {
         }
     }
     
-    const submitTwoFactorChange = useCallback(async () => {
+    const handleChangeTotpSubmit = useCallback(async event => {
+        event.preventDefault()
         setErrorMessages([])
 
         const newTwoFactorSettings = !location.state?.confirmedTwoFactorOff
@@ -118,7 +119,7 @@ const TwoFactorPage = ({ backEndUrl }) => {
         }
 
         if (location.state?.confirmedTwoFactorOff) {
-            submitTwoFactorChange()
+            handleChangeTotpSubmit()
         }
         if (
             user &&
@@ -127,7 +128,7 @@ const TwoFactorPage = ({ backEndUrl }) => {
         ) {
             setTotpAuthOn(Boolean(user.totp_auth_on))
         }
-    }, [user, totpAuthOn, navigate, location.state, submitTwoFactorChange])
+    }, [user, totpAuthOn, navigate, location.state, handleChangeTotpSubmit])
 
     const successMessageDisplay =
         messageUtility.displaySuccessMessages(successMessages)
@@ -159,22 +160,24 @@ const TwoFactorPage = ({ backEndUrl }) => {
                     <label htmlFor="totp-code" className="form-label">
                         6-digit code from your authenticator app:
                     </label>
-                    <input
-                        type="text"
-                        className="form-control text-center rounded-0 mb-3"
-                        id="totp-code"
-                        value={totpCode}
-                        onChange={event => setTotpCode(event.target.value)}
-                        maxLength="6"
-                        placeholder="123456"
-                        style={{ maxWidth: '200px' }}
-                    />
-                    <button
-                        className="btn btn-primary rounded-0"
-                        onClick={submitTwoFactorChange}
-                    >
-                        Submit
-                    </button>
+                    <form onSubmit={handleChangeTotpSubmit}>
+                        <input
+                            type="text"
+                            className="form-control text-center rounded-0 mb-3"
+                            id="totp-code"
+                            value={totpCode}
+                            onChange={event => setTotpCode(event.target.value)}
+                            maxLength="6"
+                            placeholder="123456"
+                            style={{ maxWidth: '200px' }}
+                        />
+                        <button
+                            className="btn btn-primary rounded-0"
+                            type="submit"
+                        >
+                            Submit
+                        </button>
+                    </form>
                 </div>
             </div>
     }

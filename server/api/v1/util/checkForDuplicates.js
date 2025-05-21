@@ -1,4 +1,4 @@
-import dbConnection from '../database/database.js'
+import dbConnection from '../db/dbConnection.js'
 
 const queries = {
     username: {
