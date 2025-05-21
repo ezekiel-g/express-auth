@@ -11,6 +11,7 @@ import verificationEmail from '../templates/verificationEmail.js'
 import passwordResetEmail from '../templates/passwordResetEmail.js'
 import emailChangeEmail from '../templates/emailChangeEmail.js'
 import emailRemovalEmail from '../templates/emailRemovalEmail.js'
+import deleteAccountEmail from '../templates/deleteAccountEmail.js'
 // import checkForDuplicates from '../util/checkForDuplicates.js'
 
 // // There is already validation for dupliate values both
@@ -43,9 +44,7 @@ const queries = {
             username = ?,
             email_pending = ?,
             password = ?,
-            role = ?,
-            email_change_token = ?,
-            email_change_token_expires_at = ?
+            role = ?
         WHERE id = ?;
     `,
     deleteUser: 'DELETE FROM users WHERE id = ?;',
@@ -114,6 +113,13 @@ const queries = {
             totp_auth_init_vector = ?,
             totp_auth_tag = ?
         WHERE id = ?;
+    `,
+    updateDeleteAccountToken: `
+        UPDATE users
+        SET
+            delete_account_token = ?,
+            delete_account_token_expires_at = ?
+        WHERE id = ?;
     `
 }
 
@@ -126,8 +132,8 @@ if (!jwtSecret) throw new Error('JWT_SECRET not defined in .env')
 
 const readUsers = async (request, response) => {
     try {
-        const [rows] = await dbConnection.execute(queries.readUsers)
-        return response.status(200).json(rows)
+        const [sqlResult] = await dbConnection.execute(queries.readUsers)
+        return response.status(200).json(sqlResult)
     } catch (error) {
         return handleDbError(response, error)
     }    
@@ -137,13 +143,13 @@ const readUser = async (request, response) => {
     const { id } = request.params
     
     try {
-        const [rows] = await dbConnection.execute(queries.readUser, [id])
+        const [sqlResult] = await dbConnection.execute(queries.readUser, [id])
 
-        if (rows.length === 0) {
+        if (sqlResult.length === 0) {
             return response.status(404).json({ message: 'User not found' })
         }
 
-        return response.status(200).json(rows[0])
+        return response.status(200).json(sqlResult[0])
     } catch (error) {
         return handleDbError(response, error)
     }    
@@ -167,7 +173,7 @@ const createUser = async (request, response) => {
         const tokenExpires = new Date(Date.now() + 60 * 60 * 1000)
         const salt = await bcryptjs.genSalt(10)
         const hashedPassword = await bcryptjs.hash(password, salt)
-        const [result] = await dbConnection.execute(
+        const [sqlResult] = await dbConnection.execute(
             queries.createUser,
             [
                 username,
@@ -194,7 +200,7 @@ const createUser = async (request, response) => {
                 Registered successfully — please check your email to confirm
             `,
             user: {
-                id: result.insertId,
+                id: sqlResult.insertId,
                 username,
                 email,
                 role
@@ -212,15 +218,18 @@ const updateUser = async (request, response) => {
     try {
         validateSession(request, id)
 
-        const [oldDetails] = await dbConnection.execute(queries.readUser, [id])
+        const [sqlSelect] = await dbConnection.execute(queries.readUser, [id])
 
-        if (oldDetails.length === 0) {
+        if (sqlSelect.length === 0) {
             return response.status(404).json({ message: 'User not found' })
         }
 
-        const updatedUsername = username ?? oldDetails[0].username
-        let updatedPassword = password ?? oldDetails[0].password
-        const updatedRole = role ?? oldDetails[0].role
+        const updatedUsername = username ?? sqlSelect[0].username
+        let updatedPassword = password ?? sqlSelect[0].password
+        const updatedRole = role ?? sqlSelect[0].role
+        let emailChangeToken = sqlSelect[0].email_change_token
+        let tokenExpires = sqlSelect[0].token_expires
+        let emailPending = sqlSelect[0].email_pending
 
         // const duplicateCheck = await checkForDuplicates(
         //     response,
@@ -229,10 +238,7 @@ const updateUser = async (request, response) => {
         // )
         // if (duplicateCheck !== 'pass') return
 
-        let emailChangeToken = null
-        let tokenExpires = null
-        let emailPending = null
-        if (email !== oldDetails[0].email) {
+        if (email !== sqlSelect[0].email) {
             emailChangeToken = crypto.randomBytes(32).toString('hex')
             tokenExpires = new Date(Date.now() + 60 * 60 * 1000)
             emailPending = email
@@ -259,26 +265,24 @@ const updateUser = async (request, response) => {
             const salt = await bcryptjs.genSalt(10)
             updatedPassword = await bcryptjs.hash(updatedPassword, salt)
         }
-
-        const [result] = await dbConnection.execute(
+        
+        const [sqlUpdate] = await dbConnection.execute(
             queries.updateUser,
             [
                 updatedUsername,
                 emailPending,
                 updatedPassword,
                 updatedRole,
-                emailChangeToken,
-                tokenExpires,
                 id
             ]
         )
 
-        if (result.affectedRows === 0) {
+        if (sqlUpdate.affectedRows === 0) {
             return response.status(404).json({ message: 'No changes detected' })
         }
 
         let successMessage = 'User updated successfully'
-        if (email !== oldDetails[0].email) {
+        if (email !== sqlSelect[0].email) {
             successMessage =
                 successMessage.concat(' — check email to confirm email change')
         }
@@ -288,7 +292,7 @@ const updateUser = async (request, response) => {
             user: {
                 id,
                 username: updatedUsername,
-                email: oldDetails[0].email,
+                email: sqlSelect[0].email,
                 role: updatedRole
             }
         })
@@ -298,39 +302,75 @@ const updateUser = async (request, response) => {
 }
 
 const deleteUser = async (request, response) => {
-    const { id } = request.params
+    const { token } = request.query
 
     try {
-        validateSession(request, id)
+        const [sqlResult] = await dbConnection.execute(
+            'SELECT * FROM users WHERE delete_account_token = ?;',
+            [token]
+        )
 
-        const [result] = await dbConnection.execute(queries.deleteUser, [id])
-
-        if (result.affectedRows === 0) {
-            return response.status(404).json({ message: 'User not found' })
+        if (sqlResult.length === 0) {
+            return response.status(400).json({
+                message: 'Invalid or expired token'
+            })
         }
+
+        const user = sqlResult[0]
+
+        if (new Date(user.delete_account_token_expires_at) < new Date()) {
+            return response.status(400).json({
+                message: 'Invalid or expired token'
+            })
+        }
+
+        await dbConnection.execute(queries.deleteUser, [user.id])
 
         return response.status(200).json({
             message: 'Account deleted successfully'
         })
     } catch (error) {
         return handleDbError(response, error)
-    }    
+    }
 }
+
+// const deleteUser = async (request, response) => {
+//     const { id } = request.params
+
+//     try {
+//         validateSession(request, id)
+
+//         const [sqlResult] = await dbConnection.execute(queries.deleteUser, [id])
+
+//         if (sqlResult.affectedRows === 0) {
+//             return response.status(404).json({ message: 'User not found' })
+//         }
+
+//         return response.status(200).json({
+//             message: 'Account deleted successfully'
+//         })
+//     } catch (error) {
+//         return handleDbError(response, error)
+//     }    
+// }
 
 const verifyAccountByEmail = async (request, response) => {
     const { token } = request.query
 
     try {
-        const [rows] =
-            await dbConnection.execute(queries.findUserByVerificationToken, [token])
+        const [sqlResult] =
+            await dbConnection.execute(
+                queries.findUserByVerificationToken,
+                [token]
+            )
 
-        if (rows.length === 0) {
+        if (sqlResult.length === 0) {
             return response.status(400).json({
                 message: 'Invalid or expired token'
             })
         }
 
-        const user = rows[0]
+        const user = sqlResult[0]
 
         if (new Date(user.verification_token_expires_at) < new Date()) {
             return response.status(400).json({
@@ -355,10 +395,10 @@ const resendVerificationEmail = async (request, response) => {
         'a new verification email will be sent to that address'
     
     try {
-        const [rows] =
+        const [sqlResult] =
             await dbConnection.execute(queries.findUserByEmail, [email])
 
-        if (rows.length === 0) {
+        if (sqlResult.length === 0) {
             console.warn(
                 'Verification email resend attempted for unknown email: ' +
                 email
@@ -366,7 +406,7 @@ const resendVerificationEmail = async (request, response) => {
             return response.status(200).json({ message: successMessage })
         }
 
-        const user = rows[0]
+        const user = sqlResult[0]
 
         if (user.verified_by_email) {
             return response.status(200).json({ message: successMessage })
@@ -404,17 +444,17 @@ const sendPasswordResetEmail = async (request, response) => {
         'then a password reset link has been sent'
     
     try {
-        const [rows] = await dbConnection.execute(
+        const [sqlResult] = await dbConnection.execute(
             queries.findUserByEmail,
             [email]
         )
 
-        if (rows.length === 0) {
+        if (sqlResult.length === 0) {
             console.warn(`Password reset requested for unknown email: ${email}`)
             return response.status(200).json({ message: successMessage })
         }
 
-        const user = rows[0]
+        const user = sqlResult[0]
         const resetToken = crypto.randomBytes(32).toString('hex')
         const tokenExpires = new Date(Date.now() + 60 * 60 * 1000)
 
@@ -449,18 +489,18 @@ const resetPassword = async (request, response) => {
     }
 
     try {
-        const [rows] = await dbConnection.execute(
+        const [sqlResult] = await dbConnection.execute(
             queries.findUserByEmail,
             [email]
         )
         
-        if (rows.length === 0) {
+        if (sqlResult.length === 0) {
             return response.status(400).json({
                 message: 'Invalid/expired token or invalid email address'
             })
         }
 
-        const user = rows[0]
+        const user = sqlResult[0]
         
         if (
             user.password_reset_token !== token ||
@@ -498,18 +538,18 @@ const confirmEmailChange = async (request, response) => {
     const { token } = request.query
         
     try {
-        const [rows] = await dbConnection.execute(
+        const [sqlResult] = await dbConnection.execute(
             queries.findUserByEmailChangeToken,
             [token]
         )
 
-        if (rows.length === 0) { 
+        if (sqlResult.length === 0) { 
             return response.status(400).json({
                 message: 'Invalid or expired token'
             })
         }
 
-        const user = rows[0]
+        const user = sqlResult[0]
         
         if (
             !user.email_pending ||
@@ -545,10 +585,10 @@ const getTotpSecret = async (request, response) => {
     try {
         validateSession(request)
 
-        const [userRows] = await dbConnection.execute(queries.readUser, [id])
+        const [sqlResult] = await dbConnection.execute(queries.readUser, [id])
         const totpSecret = otplib.authenticator.generateSecret()
         const totpUri = otplib.authenticator.keyuri(
-            userRows[0].email,
+            sqlResult[0].email,
             appName,
             totpSecret
         )
@@ -609,6 +649,48 @@ const setTotpAuth = async (request, response) => {
     }
 }
 
+const requestDeleteUser = async (request, response) => {
+    const { id } = request.params
+
+    try {
+        validateSession(request, id)
+
+        const [sqlResult] = await dbConnection.execute(queries.readUser, [id])
+
+        if (sqlResult.length === 0) {
+            return response.status(404).json({ message: 'User not found' })
+        }
+
+        const deleteAccountToken = crypto.randomBytes(32).toString('hex')
+        const tokenExpires = new Date(Date.now() + 60 * 60 * 1000)
+
+        await dbConnection.execute(
+            queries.updateDeleteAccountToken,
+            [deleteAccountToken, tokenExpires, id]
+        )
+
+        const deleteAccountLink =
+            `${frontEndUrl}/confirm-account-deletion?token=` +
+            `${deleteAccountToken}`
+        const emailContent =
+            deleteAccountEmail(sqlResult[0].username, deleteAccountLink)
+
+        await emailTransporter.sendMail({
+            from: process.env.EMAIL_USER,
+            to: sqlResult[0].email,
+            subject: `Confirm account deletion for ${appName}`,
+            html: emailContent
+        })
+
+        return response.status(200).json({
+            message: 'Account deletion requested — ' +
+                     'please check your email to confirm'
+        })
+    } catch (error) {
+        return handleDbError(response, error)
+    }
+}
+
 export default {
     readUsers,
     readUser,
@@ -621,5 +703,6 @@ export default {
     resetPassword,
     confirmEmailChange,
     getTotpSecret,
-    setTotpAuth
+    setTotpAuth,
+    requestDeleteUser
 }
