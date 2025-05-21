@@ -17,6 +17,10 @@ userRouter.post(
     '/send-password-reset-email',
     userController.sendPasswordResetEmail
 )
+userRouter.post(
+    '/request-account-deletion',
+    userController.requestDeleteUser
+)
 userRouter.put('/:id', userController.updateUser)
 userRouter.patch('/reset-password', userController.resetPassword)
 userRouter.patch('/:id/set-totp-auth', userController.setTotpAuth)

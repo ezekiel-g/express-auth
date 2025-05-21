@@ -16,11 +16,11 @@ CREATE TABLE users (
     totp_auth_tag VARCHAR(255) CHARACTER SET ascii,
     totp_auth_backup_codes JSON,
     verification_token VARCHAR(64) UNIQUE,
-    verification_token_expires_at TIMESTAMP,
+    verification_token_expires_at TIMESTAMP, -- No need for DEFAULT NULL
     password_reset_token VARCHAR(64) UNIQUE,
-    password_reset_token_expires_at TIMESTAMP,
+    password_reset_token_expires_at TIMESTAMP, -- No need for DEFAULT NULL
     email_change_token VARCHAR(64) UNIQUE,
-    email_change_token_expires_at TIMESTAMP,
+    email_change_token_expires_at TIMESTAMP, -- No need for DEFAULT NULL
     username_last_changed_at TIMESTAMP,
     email_last_changed_at TIMESTAMP,
     last_deactivated_at TIMESTAMP,
@@ -88,17 +88,20 @@ BEGIN
             SET MESSAGE_TEXT = 'Invalid pending email address';
     END IF;
 
-    IF NEW.verification_token_expires_at <= NOW() THEN
+    IF NEW.verification_token_expires_at IS NOT NULL 
+        AND NEW.verification_token_expires_at <= NOW() THEN
         SIGNAL SQLSTATE '45000'
             SET MESSAGE_TEXT = 'Expiration time must be in the future';
     END IF;
 
-    IF NEW.password_reset_token_expires_at <= NOW() THEN
+    IF NEW.password_reset_token_expires_at IS NOT NULL 
+        AND NEW.password_reset_token_expires_at <= NOW() THEN
         SIGNAL SQLSTATE '45000'
             SET MESSAGE_TEXT = 'Expiration time must be in the future';
     END IF;
 
-    IF NEW.email_change_token_expires_at <= NOW() THEN
+    IF NEW.email_change_token_expires_at IS NOT NULL 
+        AND NEW.email_change_token_expires_at <= NOW() THEN
         SIGNAL SQLSTATE '45000'
             SET MESSAGE_TEXT = 'Expiration time must be in the future';
     END IF;
@@ -142,17 +145,20 @@ BEGIN
             SET MESSAGE_TEXT = 'Invalid pending email address';
     END IF;
 
-    IF NEW.verification_token_expires_at <= NOW() THEN
+    IF NEW.verification_token_expires_at IS NOT NULL 
+        AND NEW.verification_token_expires_at <= NOW() THEN
         SIGNAL SQLSTATE '45000'
             SET MESSAGE_TEXT = 'Expiration time must be in the future';
     END IF;
 
-    IF NEW.password_reset_token_expires_at <= NOW() THEN
+    IF NEW.password_reset_token_expires_at IS NOT NULL 
+        AND NEW.password_reset_token_expires_at <= NOW() THEN
         SIGNAL SQLSTATE '45000'
             SET MESSAGE_TEXT = 'Expiration time must be in the future';
     END IF;
 
-    IF NEW.email_change_token_expires_at <= NOW() THEN
+    IF NEW.email_change_token_expires_at IS NOT NULL 
+        AND NEW.email_change_token_expires_at <= NOW() THEN
         SIGNAL SQLSTATE '45000'
             SET MESSAGE_TEXT = 'Expiration time must be in the future';
     END IF;
