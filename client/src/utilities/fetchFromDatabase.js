@@ -39,7 +39,7 @@ const fetchFromDatabase = async (
 
         return await response.json()
     } catch (error) {
-        console.error(`Error: ${error.message}`)
+        console.error('Error:', error.message)
         return null
     }
 }

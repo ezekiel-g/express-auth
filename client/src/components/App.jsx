@@ -1,4 +1,4 @@
-import { useEffect } from 'react'
+import { useEffect, useCallback } from 'react'
 import { Routes, Route, Navigate } from 'react-router-dom'
 import useAuthContext from '../contexts/auth/useAuthContext.js'
 import Navbar from './Navbar'
@@ -14,30 +14,33 @@ import ChangeEmailPage from './ChangeEmailPage.jsx'
 import fetchFromDatabase from '../utilities/fetchFromDatabase.js'
 
 const App = () => {
-    const { setUser, setLoading } = useAuthContext()
+    const { setUser, loading, setLoading } = useAuthContext()
     const backEndUrl = import.meta.env.VITE_BACK_END_URL
 
-    useEffect(() => {
-        const checkIfSignedIn = async () => {
-            const data = await fetchFromDatabase(
-                `${backEndUrl}/api/v1/sessions`,
-                'GET',
-                'application/json',
-                'include'
-            )
+    const checkIfSignedIn = useCallback(async () => {
+        const data = await fetchFromDatabase(
+            `${backEndUrl}/api/v1/sessions`,
+            'GET',
+            'application/json',
+            'include'
+        )
 
-            if (!data?.user) {
-                setUser(null)
-                setLoading(false)
-                return
-            }
-
-            setUser(data.user)
+        if (!data || typeof data !== 'object' || !data.user) {
+            setUser(null)
             setLoading(false)
+            return
         }
 
-        checkIfSignedIn()
+        setUser(data.user)
+        setLoading(false)
     }, [backEndUrl, setUser, setLoading])
+
+    useEffect(() => {
+        setLoading(true)
+        checkIfSignedIn()
+    }, [setLoading, checkIfSignedIn])
+
+    if (loading) return <div>Loading...</div>
 
     return (
         <>
