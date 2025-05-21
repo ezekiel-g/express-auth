@@ -30,13 +30,6 @@ const ResetPasswordPage = ({ backEndUrl }) => {
 
         if (!token) newErrors.push('Missing token')
 
-        const emailValid = await validateUser.validateEmail(
-            email,
-            null,
-            'skipDuplicateCheck'
-        )
-        if (!emailValid.valid) newErrors.push(emailValid.message)
-
         const passwordValid = await validateUser.validatePassword(newPassword)
         if (!passwordValid.valid) newErrors.push(passwordValid.message)
 
@@ -56,7 +49,7 @@ const ResetPasswordPage = ({ backEndUrl }) => {
             { email, newPassword, token }
         )
         
-        if (!data || !data.message) {
+        if (!data || typeof data !== 'object' || !data.message) {
             setErrorMessages(['Unknown error'])
             return
         }

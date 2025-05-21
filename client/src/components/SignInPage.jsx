@@ -44,29 +44,34 @@ const SignInPage = ({ backEndUrl }) => {
             { email, password }
         )
 
-        if (!data || typeof data !== 'object') {
+        if (!data || typeof data !== 'object' || !data.message) {
             isSigningIn.current = false
             setSuccessMessages([])
-            setErrorMessages([data?.message || 'Sign-in failed'])
-            return
-        }
-        
-        if (data.userId) {
-            setUserIdForTotp(data.userId)
-            setTotpRequired(true)
-            isSigningIn.current = false
-            setErrorMessages([
-                data.message ||
-                'Please provide your TOTP code'
-            ])
+            setErrorMessages(['Sign-in failed'])
             return
         }
 
-        setUser(data.user)
-        isSigningIn.current = true
-        setErrorMessages([])
-        setSuccessMessages([data.message || 'Signed in successfully'])
-        setTimeout(() => { navigate('/') }, 1000)
+        if (data.message === 'Signed in successfully') {
+            isSigningIn.current = true
+            setErrorMessages([])
+            setSuccessMessages([data.message])    
+            setUser(data.user)
+            setTimeout(() => { navigate('/') }, 1000)
+            return
+        }
+
+        if (data.userId) {
+            isSigningIn.current = false
+            setUserIdForTotp(data.userId)
+            setTotpRequired(true)
+            setSuccessMessages([])
+            setErrorMessages([data.message])
+            return
+        }
+
+        isSigningIn.current = false
+        setSuccessMessages([])
+        setErrorMessages([data.message])
     }
 
     const handleTotpSubmit = async event => {
@@ -120,18 +125,20 @@ const SignInPage = ({ backEndUrl }) => {
             { email }
         )
         
-        if (data && data.message) {
-            if (data.message.includes('If you entered an')) {
-                setErrorMessages([])
-                setSuccessMessages([data.message])
-            } else {
-                setSuccessMessages([])
-                setErrorMessages([data.message])
-            }
-        } else {
+        if (!data || typeof data !== 'object' || !data.message) {
             setSuccessMessages([])
             setErrorMessages(['Failed to resend verification email'])
+            return
         }
+
+        if (data.message.includes('If you entered an')) {
+            setErrorMessages([])
+            setSuccessMessages([data.message])
+            return
+        }
+
+        setSuccessMessages([])
+        setErrorMessages([data.message])
     }
 
     const handleSendPasswordReset = useCallback(async emailForPasswordReset => {
@@ -152,10 +159,11 @@ const SignInPage = ({ backEndUrl }) => {
         if (data.message.includes('If the email address is associated')) {
             setErrorMessages([])
             setSuccessMessages([data.message])
-        } else {
-            setSuccessMessages([])
-            setErrorMessages([data.message])
+            return
         }
+
+        setSuccessMessages([])
+        setErrorMessages([data.message])
     }, [backEndUrl])
 
 
@@ -221,7 +229,7 @@ const SignInPage = ({ backEndUrl }) => {
         messageUtility.displaySuccessMessages(successMessages)
 
     let errorMessageDisplay
-
+    
     if (errorMessages.includes(
         'Please verify your email address before signing in'
     )) {
