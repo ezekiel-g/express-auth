@@ -11,6 +11,7 @@ import ConfirmationPage from './auth/ConfirmationPage'
 import VerifyEmailPage from './auth/VerifyEmailPage'
 import ResetPasswordPage from './auth/ResetPasswordPage'
 import ChangeEmailPage from './auth/ChangeEmailPage'
+import DeleteAccountPage from './auth/DeleteAccountPage.jsx'
 import fetchFromDatabase from '../../util/fetchFromDatabase.js'
 
 const App = () => {
@@ -78,6 +79,10 @@ const App = () => {
                 <Route
                     path="/change-email"
                     element={<ChangeEmailPage backEndUrl={backEndUrl} />}
+                />
+                <Route
+                    path="/delete-account"
+                    element={<DeleteAccountPage backEndUrl={backEndUrl} />}
                 />
                 <Route path="*" element={<Navigate to="/" replace />} />
             </Routes>

@@ -12,116 +12,6 @@ import passwordResetEmail from '../templates/passwordResetEmail.js'
 import emailChangeEmail from '../templates/emailChangeEmail.js'
 import emailRemovalEmail from '../templates/emailRemovalEmail.js'
 import deleteAccountEmail from '../templates/deleteAccountEmail.js'
-// import checkForDuplicates from '../util/checkForDuplicates.js'
-
-// // There is already validation for dupliate values both
-// // on the front end and from the database, but there is optional
-// // duplicate values validation here
-
-const queries = {
-    readUsers: 'SELECT * FROM users;',
-    readUser: 'SELECT * FROM users WHERE id = ?;',
-    createUser: `
-        INSERT INTO users (
-            username,
-            email,
-            password,
-            role,
-            verification_token,
-            verification_token_expires_at
-        ) VALUES (
-            ?,
-            ?,
-            ?,
-            ?,
-            ?,
-            ?
-        );
-    `,
-    updateUser: `
-        UPDATE users
-        SET
-            username = ?,
-            email_pending = ?,
-            password = ?,
-            role = ?
-        WHERE id = ?;
-    `,
-    deleteUser: 'DELETE FROM users WHERE id = ?;',
-    findUserByVerificationToken: `
-        SELECT id, verification_token_expires_at
-        FROM users
-        WHERE verification_token = ?;
-    `,
-    verifyAccountByEmail: `
-        UPDATE users
-        SET
-            verified_by_email = 1,
-            verification_token = NULL,
-            verification_token_expires_at = NULL
-        WHERE id = ?;
-    `,
-    findUserByEmail: 'SELECT * FROM users WHERE email = ?;',
-    updateVerificationToken: `
-        UPDATE users
-        SET
-            verification_token = ?,
-            verification_token_expires_at = ?
-        WHERE id = ?;
-    `,
-    updatePasswordResetToken: `
-        UPDATE users
-        SET
-            password_reset_token = ?,
-            password_reset_token_expires_at = ?
-        WHERE id = ?;
-    `,
-    applyPasswordReset: `
-        UPDATE users
-        SET
-            password = ?,
-            password_reset_token = NULL,
-            password_reset_token_expires_at = NULL
-        WHERE email = ?;
-    `,
-    updateEmailChangeToken: `
-        UPDATE users
-        SET
-            password_reset_token = ?,
-            password_reset_token_expires_at = ?
-        WHERE id = ?;
-    `,
-    findUserByEmailChangeToken: `
-        SELECT id, email, email_pending, email_change_token_expires_at
-        FROM users
-        WHERE email_change_token = ?;
-    `,
-    applyEmailChange: `
-        UPDATE users
-        SET
-            email = email_pending,
-            email_pending = NULL,
-            email_change_token = NULL,
-            email_change_token_expires_at = NULL
-        WHERE id = ?;
-    `,
-    setTotpAuth: `
-        UPDATE users
-        SET
-            totp_auth_on = ?,
-            totp_auth_secret = ?,
-            totp_auth_init_vector = ?,
-            totp_auth_tag = ?
-        WHERE id = ?;
-    `,
-    updateDeleteAccountToken: `
-        UPDATE users
-        SET
-            delete_account_token = ?,
-            delete_account_token_expires_at = ?
-        WHERE id = ?;
-    `
-}
 
 const appName = process.env.APP_NAME
 if (!appName) throw new Error('APP_NAME not defined in .env')
@@ -132,7 +22,7 @@ if (!jwtSecret) throw new Error('JWT_SECRET not defined in .env')
 
 const readUsers = async (request, response) => {
     try {
-        const [sqlResult] = await dbConnection.execute(queries.readUsers)
+        const [sqlResult] = await dbConnection.execute('SELECT * FROM users;')
         return response.status(200).json(sqlResult)
     } catch (error) {
         return handleDbError(response, error)
@@ -143,7 +33,10 @@ const readUser = async (request, response) => {
     const { id } = request.params
     
     try {
-        const [sqlResult] = await dbConnection.execute(queries.readUser, [id])
+        const [sqlResult] = await dbConnection.execute(
+            'SELECT * FROM users WHERE id = ?;',
+            [id]
+        )
 
         if (sqlResult.length === 0) {
             return response.status(404).json({ message: 'User not found' })
@@ -162,28 +55,35 @@ const createUser = async (request, response) => {
     if (!role) role = 'user'
 
     try {
-
-        // const duplicateCheck = await checkForDuplicates(
-        //     response,
-        //     { username, email }
-        // )
-        // if (duplicateCheck !== 'pass') return
-
         const verificationToken = crypto.randomBytes(32).toString('hex')
         const tokenExpires = new Date(Date.now() + 60 * 60 * 1000)
         const salt = await bcryptjs.genSalt(10)
         const hashedPassword = await bcryptjs.hash(password, salt)
         const [sqlResult] = await dbConnection.execute(
-            queries.createUser,
+            `INSERT INTO users (username, email, password, role)
+            VALUES (?, ?, ?, ?);`,
+            [username, email, hashedPassword, role]
+        )
+
+        await dbConnection.execute(
+            `INSERT INTO user_tokens (
+                user_id,
+                token_type,
+                token_value,
+                expires_at
+            ) VALUES (?, 'account_verification', ?, ?)
+            ON DUPLICATE KEY UPDATE
+                token_value = VALUES(token_value),
+                expires_at = VALUES(expires_at),
+                created_at = CURRENT_TIMESTAMP,
+                used_at = NULL;`,
             [
-                username,
-                email,
-                hashedPassword,
-                role,
+                sqlResult.insertId,
                 verificationToken,
                 tokenExpires
             ]
         )
+
         const verificationLink =
             `${frontEndUrl}/verify-email?token=${verificationToken}`
         const emailContent = verificationEmail(username, verificationLink) 
@@ -196,9 +96,9 @@ const createUser = async (request, response) => {
         })
 
         return response.status(201).json({
-            message: `
-                Registered successfully — please check your email to confirm
-            `,
+            message: 'Registered successfully — ' +
+                     'please check your email to confirm'
+            ,
             user: {
                 id: sqlResult.insertId,
                 username,
@@ -217,13 +117,27 @@ const updateUser = async (request, response) => {
 
     try {
         validateSession(request, id)
-
-        const [sqlSelect] = await dbConnection.execute(queries.readUser, [id])
+        
+        const [sqlSelect] = await dbConnection.execute(
+            `SELECT
+                u.id,
+                u.username,
+                u.email,
+                u.password,
+                u.role,
+                u.email_pending, 
+                ut.token_value AS email_change_token, 
+                ut.expires_at AS token_expires
+            FROM users u
+            LEFT JOIN user_tokens ut 
+                ON u.id = ut.user_id AND ut.token_type = 'email_change'
+            WHERE u.id = ?`, [id]
+        )
 
         if (sqlSelect.length === 0) {
             return response.status(404).json({ message: 'User not found' })
         }
-
+        
         const updatedUsername = username ?? sqlSelect[0].username
         let updatedPassword = password ?? sqlSelect[0].password
         const updatedRole = role ?? sqlSelect[0].role
@@ -231,21 +145,22 @@ const updateUser = async (request, response) => {
         let tokenExpires = sqlSelect[0].token_expires
         let emailPending = sqlSelect[0].email_pending
 
-        // const duplicateCheck = await checkForDuplicates(
-        //     response,
-        //     { username, email },
-        //     id
-        // )
-        // if (duplicateCheck !== 'pass') return
-
         if (email !== sqlSelect[0].email) {
             emailChangeToken = crypto.randomBytes(32).toString('hex')
             tokenExpires = new Date(Date.now() + 60 * 60 * 1000)
             emailPending = email
-
+            
             await dbConnection.execute(
-                queries.updateEmailChangeToken,
-                [emailChangeToken, tokenExpires, id]
+                `INSERT INTO user_tokens 
+                    (user_id, token_type, token_value, expires_at)
+                VALUES 
+                    (?, 'email_change', ?, ?)
+                ON DUPLICATE KEY UPDATE
+                    token_value = VALUES(token_value),
+                    expires_at = VALUES(expires_at),
+                    created_at = CURRENT_TIMESTAMP,
+                    used_at = NULL;`,
+                [id, emailChangeToken, tokenExpires]
             )
 
             const changeEmailLink =
@@ -267,14 +182,10 @@ const updateUser = async (request, response) => {
         }
         
         const [sqlUpdate] = await dbConnection.execute(
-            queries.updateUser,
-            [
-                updatedUsername,
-                emailPending,
-                updatedPassword,
-                updatedRole,
-                id
-            ]
+            `UPDATE users
+            SET username = ?, email_pending = ?, password = ?, role = ?
+            WHERE id = ?;`,
+            [updatedUsername, emailPending, updatedPassword, updatedRole, id]
         )
 
         if (sqlUpdate.affectedRows === 0) {
@@ -282,6 +193,7 @@ const updateUser = async (request, response) => {
         }
 
         let successMessage = 'User updated successfully'
+
         if (email !== sqlSelect[0].email) {
             successMessage =
                 successMessage.concat(' — check email to confirm email change')
@@ -306,7 +218,12 @@ const deleteUser = async (request, response) => {
 
     try {
         const [sqlResult] = await dbConnection.execute(
-            'SELECT * FROM users WHERE delete_account_token = ?;',
+            `SELECT u.id, ut.expires_at
+            FROM users u
+            JOIN user_tokens ut
+                ON ut.user_id = u.id
+            WHERE ut.token_type = 'account_deletion'
+                AND ut.token_value = ?;`,
             [token]
         )
 
@@ -316,15 +233,26 @@ const deleteUser = async (request, response) => {
             })
         }
 
-        const user = sqlResult[0]
+        const userAndTokenInfo = sqlResult[0]
 
-        if (new Date(user.delete_account_token_expires_at) < new Date()) {
+        if (new Date(userAndTokenInfo.expires_at) < new Date()) {
             return response.status(400).json({
                 message: 'Invalid or expired token'
             })
         }
 
-        await dbConnection.execute(queries.deleteUser, [user.id])
+        await dbConnection.execute(
+            `UPDATE user_tokens
+            SET used_at = CURRENT_TIMESTAMP
+            WHERE token_value = ?
+                AND token_type = 'account_deletion';`,
+            [token]
+        )
+
+        await dbConnection.execute(
+            'DELETE FROM users WHERE id = ?;',
+            [userAndTokenInfo.id]
+        )
 
         return response.status(200).json({
             message: 'Account deleted successfully'
@@ -334,35 +262,19 @@ const deleteUser = async (request, response) => {
     }
 }
 
-// const deleteUser = async (request, response) => {
-//     const { id } = request.params
-
-//     try {
-//         validateSession(request, id)
-
-//         const [sqlResult] = await dbConnection.execute(queries.deleteUser, [id])
-
-//         if (sqlResult.affectedRows === 0) {
-//             return response.status(404).json({ message: 'User not found' })
-//         }
-
-//         return response.status(200).json({
-//             message: 'Account deleted successfully'
-//         })
-//     } catch (error) {
-//         return handleDbError(response, error)
-//     }    
-// }
-
 const verifyAccountByEmail = async (request, response) => {
     const { token } = request.query
 
     try {
-        const [sqlResult] =
-            await dbConnection.execute(
-                queries.findUserByVerificationToken,
-                [token]
-            )
+        const [sqlResult] = await dbConnection.execute(
+            `SELECT u.id, ut.expires_at
+            FROM users u
+            JOIN user_tokens ut
+                ON ut.user_id = u.id
+            WHERE ut.token_type = 'account_verification'
+                AND ut.token_value = ?;`,
+            [token]
+        )
 
         if (sqlResult.length === 0) {
             return response.status(400).json({
@@ -370,15 +282,26 @@ const verifyAccountByEmail = async (request, response) => {
             })
         }
 
-        const user = sqlResult[0]
-
-        if (new Date(user.verification_token_expires_at) < new Date()) {
+        const userAndTokenInfo = sqlResult[0]
+        
+        if (new Date(userAndTokenInfo.expires_at) < new Date()) {
             return response.status(400).json({
                 message: 'Invalid or expired token'
             })
         }
 
-        await dbConnection.execute(queries.verifyAccountByEmail, [user.id])
+        await dbConnection.execute(
+            'UPDATE users SET account_verified = 1 WHERE id = ?;',
+            [userAndTokenInfo.id]
+        )
+
+        await dbConnection.execute(
+            `UPDATE user_tokens
+            SET used_at = CURRENT_TIMESTAMP
+            WHERE token_value = ?
+                AND token_type = 'account_verification';`,
+            [token]
+        )
 
         return response.status(200).json({
             message: 'Email address verified successfully'
@@ -392,11 +315,15 @@ const resendVerificationEmail = async (request, response) => {
     const { email } = request.body
     const successMessage =
         'If you entered an email address that is pending verification, ' +
-        'a new verification email will be sent to that address'
+        'then a new verification email will be sent to that address'
     
     try {
-        const [sqlResult] =
-            await dbConnection.execute(queries.findUserByEmail, [email])
+        const [sqlResult] = await dbConnection.execute(
+            `SELECT id, username, account_verified
+            FROM users
+            WHERE email = ?;`,
+            [email]
+        )
 
         if (sqlResult.length === 0) {
             console.warn(
@@ -408,7 +335,7 @@ const resendVerificationEmail = async (request, response) => {
 
         const user = sqlResult[0]
 
-        if (user.verified_by_email) {
+        if (user.account_verified) {
             return response.status(200).json({ message: successMessage })
         }
 
@@ -416,8 +343,18 @@ const resendVerificationEmail = async (request, response) => {
         const tokenExpires = new Date(Date.now() + 60 * 60 * 1000)
 
         await dbConnection.execute(
-            queries.updateVerificationToken,
-            [newToken, tokenExpires, user.id]
+            `INSERT INTO user_tokens (
+                user_id,
+                token_type,
+                token_value,
+                expires_at
+            ) VALUES (?, 'account_verification', ?, ?)
+            ON DUPLICATE KEY UPDATE
+                token_value = VALUES(token_value),
+                expires_at = VALUES(expires_at),
+                created_at = CURRENT_TIMESTAMP,
+                used_at = NULL;`,
+            [user.id, newToken, tokenExpires]
         )
 
         const verificationLink =
@@ -445,7 +382,7 @@ const sendPasswordResetEmail = async (request, response) => {
     
     try {
         const [sqlResult] = await dbConnection.execute(
-            queries.findUserByEmail,
+            'SELECT id, username FROM users WHERE email = ?;',
             [email]
         )
 
@@ -459,8 +396,18 @@ const sendPasswordResetEmail = async (request, response) => {
         const tokenExpires = new Date(Date.now() + 60 * 60 * 1000)
 
         await dbConnection.execute(
-            queries.updatePasswordResetToken,
-            [resetToken, tokenExpires, user.id]
+            `INSERT INTO user_tokens (
+                user_id,
+                token_type,
+                token_value,
+                expires_at
+            ) VALUES (?, 'password_reset', ?, ?)
+            ON DUPLICATE KEY UPDATE
+                token_value = VALUES(token_value),
+                expires_at = VALUES(expires_at),
+                created_at = CURRENT_TIMESTAMP,
+                used_at = NULL;`,
+            [user.id, resetToken, tokenExpires]
         )
 
         const resetLink = `${frontEndUrl}/reset-password?token=${resetToken}`
@@ -489,22 +436,30 @@ const resetPassword = async (request, response) => {
     }
 
     try {
-        const [sqlResult] = await dbConnection.execute(
-            queries.findUserByEmail,
+        const [sqlResultUser] = await dbConnection.execute(
+            'SELECT id FROM users WHERE email = ?;',
             [email]
         )
         
-        if (sqlResult.length === 0) {
+        if (sqlResultUser.length === 0) {
             return response.status(400).json({
                 message: 'Invalid/expired token or invalid email address'
             })
         }
 
-        const user = sqlResult[0]
+        const user = sqlResultUser[0]
+
+        const [sqlResultToken] = await dbConnection.execute(
+            `SELECT token_value, expires_at
+            FROM user_tokens
+            WHERE user_id = ? AND token_type = 'password_reset'
+            AND token_value = ? AND used_at IS NULL;`,
+            [user.id, token]
+        )       
         
         if (
-            user.password_reset_token !== token ||
-            new Date(user.password_reset_token_expires_at) < new Date()
+            sqlResultToken.length === 0 ||
+            new Date(sqlResultToken[0].expires_at) < new Date()
         ) {
             return response.status(400).json({
                 message: 'Invalid/expired token or invalid email address'
@@ -514,12 +469,20 @@ const resetPassword = async (request, response) => {
         const salt = await bcryptjs.genSalt(10)
         const hashedPassword = await bcryptjs.hash(newPassword, salt)
 
-        const [result] = await dbConnection.execute(
-            queries.applyPasswordReset,
-            [hashedPassword, email]
+        const [sqlUpdateUser] = await dbConnection.execute(
+            'UPDATE users SET password = ? WHERE id = ?;',
+            [hashedPassword, user.id]
         )
 
-        if (result.affectedRows === 0) {
+        await dbConnection.execute(
+            `UPDATE user_tokens
+             SET used_at = CURRENT_TIMESTAMP
+             WHERE user_id = ? AND token_type = 'password_reset'
+             AND token_value = ?;`,
+            [user.id, token]
+        )
+
+        if (sqlUpdateUser.affectedRows === 0) {
             console.warn(`Password reset attempted for unknown email: ${email}`)
             return response.status(200).json({
                 message: 'Password reset request received'
@@ -539,7 +502,16 @@ const confirmEmailChange = async (request, response) => {
         
     try {
         const [sqlResult] = await dbConnection.execute(
-            queries.findUserByEmailChangeToken,
+            `SELECT
+                u.id,
+                u.email,
+                u.email_pending,
+                ut.token_value,
+                ut.expires_at
+            FROM users u
+            JOIN user_tokens ut ON u.id = ut.user_id
+            WHERE ut.token_type = 'email_change' AND ut.token_value = ? 
+            AND ut.used_at IS NULL;`,
             [token]
         )
 
@@ -553,7 +525,7 @@ const confirmEmailChange = async (request, response) => {
         
         if (
             !user.email_pending ||
-            new Date(user.email_change_token_expires_at) < new Date()
+            new Date(user.expires_at) < new Date()
         ) {
             return response.status(400).json({
                 message: 'Invalid or expired token'
@@ -562,7 +534,20 @@ const confirmEmailChange = async (request, response) => {
 
         const oldEmail = user.email
 
-        await dbConnection.execute(queries.applyEmailChange, [user.id])
+        await dbConnection.execute(
+            `UPDATE users
+            SET email = email_pending, email_pending = NULL
+            WHERE id = ?;`,
+            [user.id]
+        )
+
+        await dbConnection.execute(
+            `UPDATE user_tokens SET used_at = CURRENT_TIMESTAMP 
+                WHERE user_id = ?
+                AND token_type = 'email_change'
+                AND token_value = ?;`,
+            [user.id, token]
+        )
 
         await emailTransporter.sendMail({
             from: process.env.EMAIL_USER,
@@ -585,7 +570,15 @@ const getTotpSecret = async (request, response) => {
     try {
         validateSession(request)
 
-        const [sqlResult] = await dbConnection.execute(queries.readUser, [id])
+        const [sqlResult] = await dbConnection.execute(
+            'SELECT email FROM users WHERE id = ?;',
+            [id]
+        )
+
+        if (sqlResult.length === 0) {
+            return response.status(404).json({ message: 'User not found' })
+        }
+
         const totpSecret = otplib.authenticator.generateSecret()
         const totpUri = otplib.authenticator.keyuri(
             sqlResult[0].email,
@@ -610,8 +603,14 @@ const setTotpAuth = async (request, response) => {
 
         if (!totpAuthOn) {
             await dbConnection.execute(
-                queries.setTotpAuth,
-                [0, null, null, null, id]
+                `UPDATE users
+                SET 
+                    totp_auth_on = 0, 
+                    totp_auth_secret = NULL,
+                    totp_auth_init_vector = NULL,
+                    totp_auth_tag = NULL 
+                WHERE id = ?;`,
+                [id]
             )
 
             return response.status(200).json({
@@ -637,8 +636,14 @@ const setTotpAuth = async (request, response) => {
             encryptionUtility.encryptTotpSecret(totpSecret)
 
         await dbConnection.execute(
-            queries.setTotpAuth,
-            [1, encryptedTotpSecret, initVector, authTag, id]
+            `UPDATE users
+            SET 
+                totp_auth_on = 1, 
+                totp_auth_secret = ?, 
+                totp_auth_init_vector = ?, 
+                totp_auth_tag = ? 
+            WHERE id = ?;`,
+            [encryptedTotpSecret, initVector, authTag, id]
         )
 
         return response.status(200).json({
@@ -655,7 +660,10 @@ const requestDeleteUser = async (request, response) => {
     try {
         validateSession(request, id)
 
-        const [sqlResult] = await dbConnection.execute(queries.readUser, [id])
+        const [sqlResult] = await dbConnection.execute(
+            'SELECT username, email FROM users WHERE id = ?;',
+            [id]
+        )
 
         if (sqlResult.length === 0) {
             return response.status(404).json({ message: 'User not found' })
@@ -665,13 +673,22 @@ const requestDeleteUser = async (request, response) => {
         const tokenExpires = new Date(Date.now() + 60 * 60 * 1000)
 
         await dbConnection.execute(
-            queries.updateDeleteAccountToken,
-            [deleteAccountToken, tokenExpires, id]
+            `INSERT INTO user_tokens (
+                user_id,
+                token_type,
+                token_value,
+                expires_at
+            ) VALUES (?, 'account_deletion', ?, ?)
+            ON DUPLICATE KEY UPDATE
+                token_value = VALUES(token_value),
+                expires_at = VALUES(expires_at),
+                created_at = CURRENT_TIMESTAMP,
+                used_at = NULL;`,
+            [id, deleteAccountToken, tokenExpires]
         )
 
         const deleteAccountLink =
-            `${frontEndUrl}/confirm-account-deletion?token=` +
-            `${deleteAccountToken}`
+            `${frontEndUrl}/delete-account?token=${deleteAccountToken}`
         const emailContent =
             deleteAccountEmail(sqlResult[0].username, deleteAccountLink)
 

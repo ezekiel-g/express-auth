@@ -11,36 +11,44 @@ const ChangeEmailPage = ({ backEndUrl }) => {
     const [searchParams] = useSearchParams()
 
     const handleChangeEmailSubmit = useCallback(async token => {
+        setSuccessMessages([])
+        setErrorMessages([])
+
         const data = await fetchFromDatabase(
             `${backEndUrl}/api/v1/users/confirm-email-change` +
             `?token=${token}`
         )
 
-        if (!data || data.message.includes('expired')) {
-            setSuccessMessages([])
-            setErrorMessages([
-                data?.message || 'Email change confirmation failed'
-            ])
+        if (!data || typeof data !== 'object' || !data.message) {
+            setErrorMessages(['Email address change confirmation failed'])
             return
         }
 
-        setErrorMessages([])
-        setSuccessMessages([
-            data.message || 'Email address updated successfully'
-        ])
+        if (data.message === 'Invalid or expired token') {
+            setErrorMessages([data.message])
+            return
+        }
 
-        setTimeout(() => navigate('/sign-in'), 2000)
+        if (data.message === 'Email address updated successfully') {
+            setSuccessMessages([data.message])
+            setTimeout(() => navigate('/sign-in'), 2000)
+            return
+        }
+
+        setErrorMessages(['Email address change confirmation failed'])
     }, [backEndUrl, navigate])
 
     useEffect(() => {
         const token = searchParams.get('token')
+
         if (!token) {
             setErrorMessages(['Missing token'])
             return
         }
-        if (hasConfirmed.current) return
-        hasConfirmed.current = true
 
+        if (hasConfirmed.current) return
+
+        hasConfirmed.current = true
         handleChangeEmailSubmit(token)
     }, [searchParams, handleChangeEmailSubmit])
 
