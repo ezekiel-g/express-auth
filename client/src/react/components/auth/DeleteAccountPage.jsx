@@ -1,35 +1,43 @@
-import { useState, useEffect, useRef, useCallback } from 'react'
+import { useState, useEffect, useRef, useCallback  } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import fetchFromDatabase from '../../../util/fetchFromDatabase.js'
 import messageUtility from '../../../util/messageUtility.jsx'
 
-const VerifyEmailPage = ({ backEndUrl }) => {
+const DeleteAccountPage = ({ backEndUrl }) => {
     const [successMessages, setSuccessMessages] = useState([])
     const [errorMessages, setErrorMessages] = useState([])
     const hasConfirmed = useRef(false)
     const navigate = useNavigate()
     const [searchParams] = useSearchParams()
 
-    const verifyAccountByEmail = useCallback(async token => {
+    const handleDeleteAccount = useCallback(async token => {
+        setSuccessMessages([])
+        setErrorMessages([])
+
         const data = await fetchFromDatabase(
-            `${backEndUrl}/api/v1/users/verify-account-by-email` +
-            `?token=${token}`
+            `${backEndUrl}/api/v1/users?token=${token}`,
+            'DELETE',
+            'application/json',
+            'include'
         )
-        
-        if (!data || data.message.includes('expired')) {
-            setSuccessMessages([])
-            setErrorMessages([
-                data?.message || 'Verification failed'
-            ])
+
+        if (!data || typeof data !== 'object' || !data.message) {
+            setErrorMessages(['Account deletion failed'])
             return
         }
 
-        setErrorMessages([])
-        setSuccessMessages([
-            data.message || 'Email verified successfully'
-        ])
+        if (data.message === 'Invalid or expired token') {
+            setErrorMessages([data.message])
+            return
+        }
 
-        setTimeout(() => navigate('/sign-in'), 2000)
+        if (data.message === 'Account deleted successfully') {
+            setSuccessMessages([data.message])
+            setTimeout(() => navigate('/'), 2000)
+            return
+        }
+
+        setErrorMessages(['Account deletion failed'])
     }, [backEndUrl, navigate])
 
     useEffect(() => {
@@ -43,8 +51,8 @@ const VerifyEmailPage = ({ backEndUrl }) => {
         if (hasConfirmed.current) return
 
         hasConfirmed.current = true
-        verifyAccountByEmail(token)
-    }, [searchParams, verifyAccountByEmail])
+        handleDeleteAccount(token)
+    }, [searchParams, handleDeleteAccount])
 
     const successMessageDisplay =
         messageUtility.displaySuccessMessages(successMessages)
@@ -59,4 +67,4 @@ const VerifyEmailPage = ({ backEndUrl }) => {
     )
 }
 
-export default VerifyEmailPage
+export default DeleteAccountPage

@@ -109,7 +109,7 @@ const ConfirmationPage = ({ backEndUrl }) => {
             })
         }
 
-        cancelFunction = () => navigate('/settings')
+        cancelFunction = () => navigate(-1)
     } else if (confirmationType === 'signOut') {
         question = 'Sign out?'
 
@@ -145,13 +145,24 @@ const ConfirmationPage = ({ backEndUrl }) => {
                 This will erase your current 2FA setup, and you will need to
                 scan a new QR code to set up 2FA again
             </p>
+
         confirmFunction = () => {
             navigate('/settings/two-factor-authentication', {
                 replace: true,
                 state: { confirmedTwoFactorOff: true }
             })
-
         }    
+
+        cancelFunction = () => navigate(-1)
+    } else if (confirmationType === 'confirmDeleteAccount') {
+        question = 'Continue with account deletion (irreversible)?'
+        submitButtonName = 'Continue'
+        confirmFunction = () => {
+            navigate('/settings', {
+                replace: true,
+                state: { deleteAccountConfirmed: true }
+            })
+        }
 
         cancelFunction = () => navigate(-1)
     }

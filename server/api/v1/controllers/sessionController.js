@@ -20,15 +20,13 @@ const readSession = async (request, response) => {
             return response.status(200).json({ user: null })
         }
 
-        const [rows] = await dbConnection.execute(
-            `
-                SELECT id, username, email, role, totp_auth_on
-                FROM users
-                WHERE id = ?;
-            `,
+        const [sqlResult] = await dbConnection.execute(
+            `SELECT id, username, email, role, totp_auth_on
+            FROM users
+            WHERE id = ?;`,
             [decryptedToken.id]
         )
-        const user = rows[0]
+        const user = sqlResult[0]
 
         if (!user) {
             return response.status(200).json({ user: null })
@@ -45,23 +43,21 @@ const createSession = async (request, response) => {
     const { email, password } = request.body
 
     try {
-        const [rows] = await dbConnection.execute(
-            `
-                SELECT
-                    id,
-                    username,
-                    email,
-                    password,
-                    role,
-                    verified_by_email,
-                    totp_auth_on
-                FROM users
-                WHERE email = ?;
-            `,
+        const [sqlResult] = await dbConnection.execute(
+            `SELECT
+                id,
+                username,
+                email,
+                password,
+                role,
+                account_verified,
+                totp_auth_on
+            FROM users
+            WHERE email = ?;`,
             [email]
         )
 
-        const user = rows[0]
+        const user = sqlResult[0]
 
         if (!user) {
             return response.status(401).json({
@@ -77,7 +73,7 @@ const createSession = async (request, response) => {
             })
         }
         
-        if (!user.verified_by_email) {
+        if (!user.account_verified) {
             return response.status(403).json({
                 message: 'Please verify your email address before signing in'
             })
@@ -188,22 +184,20 @@ const verifyTotp = async (request, response) => {
     }
 
     try {
-        const [rows] = await dbConnection.execute(
-            `
-                SELECT
-                    id,
-                    username,
-                    email,
-                    role,
-                    totp_auth_secret,
-                    totp_auth_init_vector,
-                    totp_auth_tag
-                FROM users
-                WHERE id = ?;
-            `,
+        const [sqlResult] = await dbConnection.execute(
+            `SELECT
+                id,
+                username,
+                email,
+                role,
+                totp_auth_secret,
+                totp_auth_init_vector,
+                totp_auth_tag
+            FROM users
+            WHERE id = ?;`,
             [userId]
         )
-        const user = rows[0]
+        const user = sqlResult[0]
 
         if (!user) {
             return response.status(404).json({

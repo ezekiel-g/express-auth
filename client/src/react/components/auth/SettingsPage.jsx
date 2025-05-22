@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
-import { useNavigate, useLocation, Link } from 'react-router-dom'
+import { useNavigate, useLocation } from 'react-router-dom'
 import useAuthContext from '../../contexts/auth/useAuthContext.js'
+import fetchFromDatabase from '../../../util/fetchFromDatabase.js'
 import fetchWithRefresh from '../../../util/fetchWithRefresh.js'
 import validateUser from '../../../util/validateUser.js'
 import messageUtility from '../../../util/messageUtility.jsx'
@@ -17,10 +18,12 @@ const SettingsPage = ({ backEndUrl }) => {
     const [password, setPassword] = useState('')
     const [reEnteredPassword, setReEnteredPassword] = useState('')
     const [pendingUserUpdate, setPendingUserUpdate] = useState({})
+    const [twoFactorStatus, setTwoFactorStatus] = useState('OFF')
     const [successMessages, setSuccessMessages] = useState([])
     const [errorMessages, setErrorMessages] = useState([])
     const shouldSubmit = useRef(false)
     const hasSubmittedSecond = useRef(false)
+    const hasConfirmedDeletion = useRef(false)
     const navigate = useNavigate()
     const location = useLocation()
 
@@ -130,37 +133,27 @@ const SettingsPage = ({ backEndUrl }) => {
         backEndUrl       
     ])
 
-    useEffect(() => {
-        if (!user) {
-            navigate('/sign-in')
-            return
-        } else {
-            setUsername(user.username)
-            setEmail(user.email)
-            setPassword('')
-            setReEnteredPassword('')
-        }
-        
-        if (!location.state?.confirmedPassword && canEditSettings) {
-            setCanEditSettings(false)
-        }
-
-        if (location.state?.confirmedUserUpdate &&
-            location.state?.updatedUserDetails
-        ) {
-            handleSecondSubmit(location.state?.updatedUserDetails)
-        }
-
+    const handleSendDeleteAccountEmail = useCallback(async () => {
+        setSuccessMessages([])
         setErrorMessages([])
-    }, [
-        user,
-        navigate,
-        location,
-        canEditSettings,
-        setCanEditSettings,
-        pendingUserUpdate,
-        handleSecondSubmit
-    ])
+
+        if (hasConfirmedDeletion.current) return
+        hasConfirmedDeletion.current = true
+
+        const data = await fetchFromDatabase(
+            `${backEndUrl}/api/v1/users/${user.id}/request-account-deletion`)
+
+        if (!data || typeof data !== 'object' || !data.message) {
+            setErrorMessages(['Account deletion request failed'])
+            return
+        }
+
+        if (data.message.includes('Account deletion requested')) {
+            setSuccessMessages([data.message])
+        }
+
+        setErrorMessages['Account deletion request failed']
+    }, [user, backEndUrl])
 
     const goToConfirmationPage = confirmationType => {
         navigate('/confirm', { state: { confirmationType: confirmationType } })
@@ -175,13 +168,55 @@ const SettingsPage = ({ backEndUrl }) => {
         setErrorMessages([])
     }
 
+    useEffect(() => {
+        if (!user) {
+            navigate('/sign-in')
+            return
+        } else {
+            setUsername(user.username)
+            setEmail(user.email)
+            setTwoFactorStatus(user.totp_auth_on === 0 ? 'OFF' : 'ON')
+            setPassword('')
+            setReEnteredPassword('')
+        }
+        
+        if (!location.state?.confirmedPassword && canEditSettings) {
+            setCanEditSettings(false)
+        }
+
+        if (location.state?.confirmedUserUpdate &&
+            location.state?.updatedUserDetails
+        ) {
+            handleSecondSubmit(location.state?.updatedUserDetails)
+        }
+
+        if (location.state?.deleteAccountConfirmed) {
+            handleSendDeleteAccountEmail(location.state?.deleteAccountConfirmed)
+        }
+
+        setErrorMessages([])
+    }, [
+        user,
+        navigate,
+        location,
+        canEditSettings,
+        setCanEditSettings,
+        pendingUserUpdate,
+        handleSecondSubmit,
+        handleSendDeleteAccountEmail
+    ])
+
     const passwordLabel = !canEditSettings ? 'Password' : 'New password'
     let passwordPlaceholder = '****************'
     let reEnteredPasswordDisplay = null
-    const twoFactorStatus = !user?.totp_auth_on ? 'OFF' : 'ON'
     let twoFactorLink = null
     let buttonDisplay = <></>
     let inputClasses = 'form-control rounded-0'
+    let deleteAccountDiv =
+        <div style={{ float: 'right' }}
+        >
+            Account status: ACTIVE
+        </div>
 
     if (!canEditSettings) {
         buttonDisplay =
@@ -235,12 +270,24 @@ const SettingsPage = ({ backEndUrl }) => {
                 </button>
             </div>
         twoFactorLink =
-            <Link
-                to="/settings/two-factor-authentication"
-                className="nav-link text-decoration-underline"
+            <span
+                onClick={() => navigate('/settings/two-factor-authentication')}
+                style={{ cursor: 'pointer', textDecoration: 'underline'}}
             >
                 Update 2FA
-            </Link>
+            </span>  
+
+        deleteAccountDiv =
+            <span
+                onClick={() => goToConfirmationPage('confirmDeleteAccount')}
+                style={{
+                    float: 'right',
+                    cursor: 'pointer',
+                    textDecoration: 'underline'
+                }}
+            >
+                Delete account
+            </span>            
         passwordPlaceholder = 'Leave blank to keep password unchanged'
     }
 
@@ -298,10 +345,11 @@ const SettingsPage = ({ backEndUrl }) => {
                     />
                 </div>
                 {reEnteredPasswordDisplay}
-                <div>
-                    Two-factor authentication:{' '}{twoFactorStatus}{twoFactorLink}
-                </div>
-                <br />
+                
+                {deleteAccountDiv}
+                Two-factor authentication: {twoFactorStatus}<br />
+                {twoFactorLink}
+                <br /><br />
                 {buttonDisplay}
             </form>
         </div>

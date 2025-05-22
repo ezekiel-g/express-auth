@@ -57,7 +57,7 @@ const TwoFactorPage = ({ backEndUrl }) => {
     }
     
     const handleChangeTotpSubmit = useCallback(async event => {
-        event.preventDefault()
+        if (event?.preventDefault) event.preventDefault()
         setErrorMessages([])
 
         const newTwoFactorSettings = !location.state?.confirmedTwoFactorOff
@@ -116,6 +116,8 @@ const TwoFactorPage = ({ backEndUrl }) => {
         if (!user) {
             navigate('/sign-in')
             return
+        } else {
+            setTotpAuthOn(user.totp_auth_on === 0 ? false : true)
         }
 
         if (location.state?.confirmedTwoFactorOff) {
@@ -138,7 +140,11 @@ const TwoFactorPage = ({ backEndUrl }) => {
 
     if (qrCodeImage) {
         qrCodeDisplay =
-            <div> 
+            <div>
+                <div htmlFor="qr-code-image" className="alert alert-danger rounded-0">
+                        2FA not activated until QR code is scanned and 6-digit
+                        code is entered
+                </div>
                 <div className="mb-3">
                     <label htmlFor="qr-code-image" className="form-label">
                         Scan this QR code with your authenticator app or enter
@@ -153,9 +159,7 @@ const TwoFactorPage = ({ backEndUrl }) => {
                     />
                     <p>{totpSecret}</p>
                 </div>
-
-                
-                
+               
                 <div className="mb-3">
                     <label htmlFor="totp-code" className="form-label">
                         6-digit code from your authenticator app:

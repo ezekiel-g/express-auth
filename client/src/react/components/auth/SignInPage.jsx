@@ -46,14 +46,12 @@ const SignInPage = ({ backEndUrl }) => {
 
         if (!data || typeof data !== 'object' || !data.message) {
             isSigningIn.current = false
-            setSuccessMessages([])
             setErrorMessages(['Sign-in failed'])
             return
         }
 
         if (data.message === 'Signed in successfully') {
             isSigningIn.current = true
-            setErrorMessages([])
             setSuccessMessages([data.message])    
             setUser(data.user)
             setTimeout(() => { navigate('/') }, 1000)
@@ -64,13 +62,11 @@ const SignInPage = ({ backEndUrl }) => {
             isSigningIn.current = false
             setUserIdForTotp(data.userId)
             setTotpRequired(true)
-            setSuccessMessages([])
             setErrorMessages([data.message])
             return
         }
 
         isSigningIn.current = false
-        setSuccessMessages([])
         setErrorMessages([data.message])
     }
 
@@ -103,7 +99,6 @@ const SignInPage = ({ backEndUrl }) => {
 
         if (!data || data.message !== 'Signed in successfully') {
             isSigningIn.current = false
-            setSuccessMessages([])
             setErrorMessages([data?.message || 'Invalid TOTP code'])
             return
         }
@@ -111,12 +106,14 @@ const SignInPage = ({ backEndUrl }) => {
         setUser(data.user)
         setTotpRequired(false)
         isSigningIn.current = true
-        setErrorMessages([])
         setSuccessMessages([data.message])
         setTimeout(() => { navigate('/') }, 1000)
     }
 
     const handleResendVerification = async () => {
+        setSuccessMessages([])
+        setErrorMessages([])
+
         const data = await fetchFromDatabase(
             `${backEndUrl}/api/v1/users/resend-verification-email`,
             'POST',
@@ -126,22 +123,22 @@ const SignInPage = ({ backEndUrl }) => {
         )
         
         if (!data || typeof data !== 'object' || !data.message) {
-            setSuccessMessages([])
             setErrorMessages(['Failed to resend verification email'])
             return
         }
 
         if (data.message.includes('If you entered an')) {
-            setErrorMessages([])
             setSuccessMessages([data.message])
             return
         }
 
-        setSuccessMessages([])
         setErrorMessages([data.message])
     }
 
     const handleSendPasswordReset = useCallback(async emailForPasswordReset => {
+        setSuccessMessages([])
+        setErrorMessages([])
+        
         const data = await fetchFromDatabase(
             `${backEndUrl}/api/v1/users/send-password-reset-email`,
             'POST',
@@ -151,18 +148,15 @@ const SignInPage = ({ backEndUrl }) => {
         )
 
         if (!data || typeof data !== 'object' || !data.message) {
-            setSuccessMessages([])
             setErrorMessages(['Failed to send password reset email'])
             return
         }
 
         if (data.message.includes('If the email address is associated')) {
-            setErrorMessages([])
             setSuccessMessages([data.message])
             return
         }
 
-        setSuccessMessages([])
         setErrorMessages([data.message])
     }, [backEndUrl])
 
@@ -173,11 +167,13 @@ const SignInPage = ({ backEndUrl }) => {
             null,
             'skipDuplicateCheck'
         )
+
         if (!emailValid.valid) {
             setSuccessMessages([])
             setErrorMessages([emailValid.message])
             return null
         }
+
         navigate('/confirm', { state: {
             confirmationType: confirmationType,
             email: email
@@ -189,6 +185,7 @@ const SignInPage = ({ backEndUrl }) => {
             navigate('/')
             return
         }
+        
         if (
             location.state?.confirmedPasswordReset &&
             location.state?.email &&
