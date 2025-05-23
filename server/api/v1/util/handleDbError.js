@@ -19,7 +19,9 @@ const handleDbError = (response, error) => {
         message = 'Cannot delete record with related records'
     }
 
-    console.error(`Error ${error.code}: ${error.message}`)
+    console.error(
+        `Error${error.code ? ` ${error.code}` : ''}: ${error.message}`
+    )
 
     if (error.stack) console.error(error.stack)
 

@@ -35,7 +35,7 @@ const checkForDuplicates = async (response, entries = {}, excludeId = null) => {
                 duplicateEntryErrors.push(queryInfo.errorMessage)
             }
         } catch (error) {
-            console.error(`Error: ${error.message}`)
+            console.error('Error:', error.message)
             return response.status(500).json({ message: 'Database error' })
         }
     }
