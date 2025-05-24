@@ -115,7 +115,7 @@ const SignInPage = ({ backEndUrl }) => {
         setErrorMessages([])
 
         const data = await fetchFromDatabase(
-            `${backEndUrl}/api/v1/users/resend-verification-email`,
+            `${backEndUrl}/api/v1/verifications/resend-verification-email`,
             'POST',
             'application/json',
             'same-origin',
@@ -140,7 +140,7 @@ const SignInPage = ({ backEndUrl }) => {
         setErrorMessages([])
         
         const data = await fetchFromDatabase(
-            `${backEndUrl}/api/v1/users/send-password-reset-email`,
+            `${backEndUrl}/api/v1/verifications/send-password-reset-email`,
             'POST',
             'application/json',
             'same-origin',

@@ -36,10 +36,11 @@ const TwoFactorPage = ({ backEndUrl }) => {
                 setTotpSecret(null)
             } else {
                 const data = await fetchFromDatabase(
-                    `${backEndUrl}/api/v1/users/${user.id}/get-totp-secret`,
-                    'GET',
+                    `${backEndUrl}/api/v1/verifications/get-totp-secret`,
+                    'POST',
                     'application/json',
-                    'include'
+                    'include',
+                    user.id
                 )
                 
                 if (!data || typeof data !== 'object') {
@@ -61,8 +62,13 @@ const TwoFactorPage = ({ backEndUrl }) => {
         setErrorMessages([])
 
         const newTwoFactorSettings = !location.state?.confirmedTwoFactorOff
-            ? { totpAuthOn: true, totpSecret, totpCode }
-            : { totpAuthOn: false, totpSecret: null, totpCode: null }
+            ? { id: user.id, totpAuthOn: true, totpSecret, totpCode }
+            : {
+                id: user.id,
+                totpAuthOn: false,
+                totpSecret: null,
+                totpCode: null
+            }
 
         if (!location.state?.confirmedTwoFactorOff) {
             if (!totpSecret) {
@@ -79,7 +85,7 @@ const TwoFactorPage = ({ backEndUrl }) => {
         }
 
         const data = await fetchFromDatabase(
-            `${backEndUrl}/api/v1/users/${user.id}/set-totp-auth`,
+            `${backEndUrl}/api/v1/verifications/set-totp-auth`,
             'PATCH',
             'application/json',
             'include',

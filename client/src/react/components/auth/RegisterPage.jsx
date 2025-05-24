@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
 import useAuthContext from '../../contexts/auth/useAuthContext.js'
 import fetchFromDatabase from '../../../util/fetchFromDatabase.js'
-import validateUser from '../../../util/validateUser.js'
+// import validateUser from '../../../util/validateUser.js'
 import messageUtility from '../../../util/messageUtility.jsx'
 
 const RegisterPage = ({ backEndUrl }) => {
@@ -22,46 +22,55 @@ const RegisterPage = ({ backEndUrl }) => {
 
     const handleSubmit = async event => {
         event.preventDefault()
+        setSuccessMessages([])
         setErrorMessages([])
 
-        const newErrors = []
+        // // Optional front-end form validation
 
-        const usernameValid = await validateUser.validateUsername(username)
-        if (!usernameValid.valid) newErrors.push(usernameValid.message)
+        // const newErrors = []
 
-        const emailValid = await validateUser.validateEmail(email)
-        if (!emailValid.valid) newErrors.push(emailValid.message)
+        // const usernameValid = await validateUser.validateUsername(username)
+        // if (!usernameValid.valid) newErrors.push(usernameValid.message)
 
-        const passwordValid = await validateUser.validatePassword(password)
-        if (!passwordValid.valid) newErrors.push(passwordValid.message)
+        // const emailValid = await validateUser.validateEmail(email)
+        // if (!emailValid.valid) newErrors.push(emailValid.message)
 
-        if (password !== reEnteredPassword) {
-            newErrors.push('Passwords must match')
-        }
-        if (newErrors.length > 0) {
-            setErrorMessages(newErrors)
-            return
-        }
+        // const passwordValid = await validateUser.validatePassword(password)
+        // if (!passwordValid.valid) newErrors.push(passwordValid.message)
+
+        // if (password !== reEnteredPassword) {
+        //     newErrors.push('Passwords must match')
+        // }
+        // if (newErrors.length > 0) {
+        //     setErrorMessages(newErrors)
+        //     return
+        // }
 
         const data = await fetchFromDatabase(
             `${backEndUrl}/api/v1/users`,
             'POST',
             'application/json',
             'same-origin',
-            { username, email, password }
+            { username, email, password, reEnteredPassword }
         )
         
-        if (!data || typeof data !== 'object') {
+        if (!data || typeof data !== 'object' || !data.message) {
             setErrorMessages(['Registration failed'])
             return
-        } else {
-            isRegistering.current = true
-            setSuccessMessages([
-                data.message ||
-                'Registered successfully — please sign in'
-            ])
-            setTimeout(() => { navigate('/sign-in') }, 2000)
         }
+
+        if (data.validationErrors?.length > 0) {
+            setErrorMessages(data.validationErrors)
+            return
+        }
+
+        if (data.message.includes('Registered successfully')) {
+            setSuccessMessages([data.message])
+            setTimeout(() => { navigate('/sign-in') }, 2000)
+            return
+        }
+
+        setErrorMessages([data.message])
     }
 
     const successMessageDisplay =

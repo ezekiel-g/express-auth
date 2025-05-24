@@ -12,7 +12,7 @@ const VerifyEmailPage = ({ backEndUrl }) => {
 
     const verifyAccountByEmail = useCallback(async token => {
         const data = await fetchFromDatabase(
-            `${backEndUrl}/api/v1/users/verify-account-by-email` +
+            `${backEndUrl}/api/v1/verifications/verify-account-by-email` +
             `?token=${token}`
         )
         

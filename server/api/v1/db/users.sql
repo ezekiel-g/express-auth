@@ -6,7 +6,7 @@ CREATE TABLE users (
     email_ci VARCHAR(254) AS (LOWER(email)) STORED,
     email_pending VARCHAR(254) COLLATE utf8mb4_bin,
     email_pending_ci VARCHAR(254) AS (LOWER(email_pending)) STORED,
-    password VARCHAR(255) NOT NULL,
+    password VARCHAR(60) NOT NULL,
     role VARCHAR(24) DEFAULT 'user' NOT NULL,
     account_verified TINYINT DEFAULT 0 NOT NULL,
     account_active TINYINT DEFAULT 1 NOT NULL,
@@ -29,6 +29,8 @@ CREATE TABLE users (
 
     CONSTRAINT username_length_3_to_24
         CHECK (CHAR_LENGTH(username) BETWEEN 3 AND 24),
+    CONSTRAINT password_60_characters
+        CHECK (CHAR_LENGTH(password) = 60),
     CONSTRAINT account_verified_0_or_1
         CHECK (account_verified IN (0, 1)),
     CONSTRAINT account_active_0_or_1
