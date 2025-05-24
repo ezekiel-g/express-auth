@@ -42,7 +42,7 @@ const ResetPasswordPage = ({ backEndUrl }) => {
         }
 
         const data = await fetchFromDatabase(
-            `${backEndUrl}/api/v1/users/reset-password`,
+            `${backEndUrl}/api/v1/verifications/reset-password`,
             'PATCH',
             'application/json',
             'same-origin',

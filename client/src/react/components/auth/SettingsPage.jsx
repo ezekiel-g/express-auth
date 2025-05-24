@@ -3,7 +3,7 @@ import { useNavigate, useLocation } from 'react-router-dom'
 import useAuthContext from '../../contexts/auth/useAuthContext.js'
 import fetchFromDatabase from '../../../util/fetchFromDatabase.js'
 import fetchWithRefresh from '../../../util/fetchWithRefresh.js'
-import validateUser from '../../../util/validateUser.js'
+// import validateUser from '../../../util/validateUser.js'
 import messageUtility from '../../../util/messageUtility.jsx'
 
 const SettingsPage = ({ backEndUrl }) => {
@@ -36,43 +36,49 @@ const SettingsPage = ({ backEndUrl }) => {
 
         shouldSubmit.current = false
 
-        const newErrors = []
+        // // Optional front-end form validation
 
-        const usernameValid =
-            await validateUser.validateUsername(username, user.id)
-        if (!usernameValid.valid) newErrors.push(usernameValid.message)
+        // const newErrors = []
 
-        const emailValid = await validateUser.validateEmail(email, user.id)
-        if (!emailValid.valid) newErrors.push(emailValid.message)
+        // const usernameValid =
+        //     await validateUser.validateUsername(username, user.id)
+        // if (!usernameValid.valid) newErrors.push(usernameValid.message)
 
-        if (password && password !== '') {
-            const passwordValid =
-                await validateUser.validatePassword(password, user.id)
-            if (!passwordValid.valid) newErrors.push(passwordValid.message)
-        }
-        if (
-            (password && password !== reEnteredPassword) ||
-            (!password && reEnteredPassword)
-        ) {
-            newErrors.push('Passwords must match')
-        }
-        if (newErrors.length > 0) {
-            setErrorMessages(newErrors)
-            return
-        }
+        // const emailValid = await validateUser.validateEmail(email, user.id)
+        // if (!emailValid.valid) newErrors.push(emailValid.message)
+
+        // if (password && password !== '') {
+        //     const passwordValid =
+        //         await validateUser.validatePassword(password, user.id)
+        //     if (!passwordValid.valid) newErrors.push(passwordValid.message)
+        // }
+        // if (
+        //     (password && password !== reEnteredPassword) ||
+        //     (!password && reEnteredPassword)
+        // ) {
+        //     newErrors.push('Passwords must match')
+        // }
+        // if (newErrors.length > 0) {
+        //     setErrorMessages(newErrors)
+        //     return
+        // }
 
         const updatedUserDetails = {}
 
-        if (username !== user?.username) updatedUserDetails.username = username
-        if (email !== user?.email) updatedUserDetails.email = email
-        if (password && password !== '') {
-            updatedUserDetails.password = password
-        }
-        if (Object.keys(updatedUserDetails).length === 0) {
-            setErrorMessages(['No changes detected'])
-            return
-        }
-        
+        // if (username !== user?.username) updatedUserDetails.username = username
+        // if (email !== user?.email) updatedUserDetails.email = email
+        // if (password && password !== '') {
+        //     updatedUserDetails.password = password
+        // }
+        // if (Object.keys(updatedUserDetails).length === 0) {
+        //     setErrorMessages(['No changes detected'])
+        //     return
+        // }
+
+        // Comment the below line back in and the above validations out (except
+        // const updatedUserDetails = {}) to skip front-end validation
+
+        Object.assign(updatedUserDetails, { username, email, password })
         setPendingUserUpdate(updatedUserDetails)
         navigate('/confirm', {
             state: {
@@ -85,45 +91,45 @@ const SettingsPage = ({ backEndUrl }) => {
     const handleSecondSubmit = useCallback(async updated => {
         if (hasSubmittedSecond.current) return
         hasSubmittedSecond.current = true
-
+        
         const updatedUser = Object.assign({}, user, updated)
         const data = await fetchWithRefresh(
             `${backEndUrl}/api/v1/users/${user.id}`,
-            'PUT',
+            'PATCH',
             'application/json',
             'include',
             updatedUser
         )
-        
-        if (!data || typeof data !== 'object') {
-            setErrorMessages([data?.message || 'Update failed'])
+        console.log('Data:', data)
+        if (!data || typeof data !== 'object' || !data.message) {
+            setErrorMessages(['Update failed'])
             return
-        } else {
-            const newMessages = []
+        }
 
-            if (data.user.username !== user.username) {
-                newMessages.push('Username updated successfully')
-            }
-            if (data.message.includes('confirm email change')) {
-                newMessages.push(
-                    'Email address update pending email confirmation'
-                )
-            }
-            if (updated.password) {
-                newMessages.push('Password updated successfully')
-            }
+        if (data.validationErrors?.length > 0) {
+            setErrorMessages(data.validationErrors)
+            return
+        }
 
+        if (data.successfulUpdates?.length > 0) {
             updatedUser.email = user.email
             setUser(updatedUser)
             shouldSubmit.current = false
             setPassword('')
             setReEnteredPassword('')
-            setSuccessMessages(newMessages)
+            setCanEditSettings(false)
+            setPendingUserUpdate({})
+            setSuccessMessages(data.successfulUpdates)
+            navigate(location.pathname, { replace: true })
+            return
         }
 
-        setCanEditSettings(false)
-        setPendingUserUpdate({})
-        navigate(location.pathname, { replace: true })
+        if (data.message.includes('User updated successfully')) {
+            setSuccessMessages([data.message])
+            return
+        }
+
+        setErrorMessages([data.message])
     }, [
         user,
         setUser,
@@ -141,7 +147,12 @@ const SettingsPage = ({ backEndUrl }) => {
         hasConfirmedDeletion.current = true
 
         const data = await fetchFromDatabase(
-            `${backEndUrl}/api/v1/users/${user.id}/request-account-deletion`)
+            `${backEndUrl}/api/v1/verifications/request-account-deletion`,
+            'POST',
+            'application/json',
+            'include',
+            user.id
+        )
 
         if (!data || typeof data !== 'object' || !data.message) {
             setErrorMessages(['Account deletion request failed'])

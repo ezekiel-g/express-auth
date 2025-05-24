@@ -15,7 +15,7 @@ const ChangeEmailPage = ({ backEndUrl }) => {
         setErrorMessages([])
 
         const data = await fetchFromDatabase(
-            `${backEndUrl}/api/v1/users/confirm-email-change` +
+            `${backEndUrl}/api/v1/verifications/confirm-email-change` +
             `?token=${token}`
         )
 
