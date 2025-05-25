@@ -9,3 +9,18 @@ textarea::placeholder {
     color: #909090;
     font-style: italic;
 }
+
+.hcaptcha-outer-container {
+    border-radius: 0;
+    overflow: hidden;
+    position: relative;
+    width: 295px;
+    height: 78px;
+}
+
+.hcaptcha-inner-container {
+    position: absolute;
+    transform: translateX(calc(-50% + 1px));
+    width: 304px;
+    left: 50%;
+}

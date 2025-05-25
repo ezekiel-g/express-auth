@@ -11,6 +11,8 @@ const jwtSecret = process.env.JWT_SECRET
 if (!jwtSecret) throw new Error('JWT_SECRET not defined in .env')
 const jwtRefreshSecret = process.env.JWT_REFRESH_SECRET
 if (!jwtRefreshSecret) throw new Error('JWT_REFRESH_SECRET not defined in .env')
+const hCaptchaSecret = process.env.HCAPTCHA_SECRET
+if (!hCaptchaSecret) throw new Error('HCAPTCHA_SECRET not defined in .env')
 
 const readSession = async (request, response) => {
     try {
@@ -40,9 +42,36 @@ const readSession = async (request, response) => {
 }
 
 const createSession = async (request, response) => {
-    const { email, password } = request.body
+    const { email, password, hCaptchaToken } = request.body
+
+    if (!hCaptchaToken) {
+        return response.status(400).json({
+            message: 'hCaptcha token missing'
+        })
+    }
 
     try {
+        const hCaptchaResponse = await fetch(
+            'https://hcaptcha.com/siteverify',
+            {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded'
+                },
+                body: new URLSearchParams({
+                    secret: hCaptchaSecret,
+                    response: hCaptchaToken
+                })
+            }
+        )
+        const hCaptchaValidation = await hCaptchaResponse.json()
+
+        if (!hCaptchaValidation.success) {
+            return response.status(400).json({
+                message: 'hCaptcha verification failed'
+            })
+        }        
+
         const [sqlResult] = await dbConnection.execute(
             `SELECT
                 id,

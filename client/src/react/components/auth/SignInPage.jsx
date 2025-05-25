@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { useNavigate, useLocation, Link } from 'react-router-dom'
+import HCaptcha from '@hcaptcha/react-hcaptcha'
 import useAuthContext from '../../contexts/auth/useAuthContext.js'
 import fetchFromDatabase from '../../../util/fetchFromDatabase.js'
 import messageUtility from '../../../util/messageUtility.jsx'
@@ -8,6 +9,8 @@ const SignInPage = ({ backEndUrl }) => {
     const { user, setUser } = useAuthContext()
     const [email, setEmail] = useState('')
     const [password, setPassword] = useState('')
+    const [hCaptchaToken, setHCaptchaToken] = useState(null)
+    const [captchaVisible, setCaptchaVisible] = useState(false)
     const [totpCode, setTotpCode] = useState('')
     const [totpRequired, setTotpRequired] = useState(false)
     const [userIdForTotp, setUserIdForTotp] = useState(null)
@@ -34,13 +37,18 @@ const SignInPage = ({ backEndUrl }) => {
             setErrorMessages(newErrors)
             return
         }
+        if (!hCaptchaToken) {
+            setCaptchaVisible(true)
+            isSigningIn.current = false
+            return
+        }
 
         const data = await fetchFromDatabase(
             `${backEndUrl}/api/v1/sessions`,
             'POST',
             'application/json',
             'include',
-            { email, password }
+            { email, password, hCaptchaToken }
         )
 
         if (!data || typeof data !== 'object' || !data.message) {
@@ -67,6 +75,11 @@ const SignInPage = ({ backEndUrl }) => {
 
         isSigningIn.current = false
         setErrorMessages([data.message])
+    }
+
+    const handleCaptchaResponse = token => {
+        setHCaptchaToken(token)
+        setCaptchaVisible(false)
     }
 
     const handleTotpSubmit = async event => {
@@ -204,7 +217,20 @@ const SignInPage = ({ backEndUrl }) => {
     const handleSubmit =
         !totpRequired ? handleEmailPasswordSubmit : handleTotpSubmit
 
+    let captchaDisplay = null
     let totpDisplay = null
+
+    if (captchaVisible) {
+        captchaDisplay =
+            <div className="hcaptcha-outer-container">
+                <div className="hcaptcha-inner-container">
+                    <HCaptcha
+                        sitekey="b2e681ea-a462-46d0-a966-218053c0d5cc"
+                        onVerify={handleCaptchaResponse}
+                    />
+                </div>         
+            </div>
+    }
     
     if (totpRequired && userIdForTotp) {
         totpDisplay =
@@ -283,6 +309,7 @@ const SignInPage = ({ backEndUrl }) => {
                         onChange={event => setPassword(event.target.value)}
                     />
                 </div>
+                {captchaDisplay}
                 {totpDisplay}
 
                 <br />
