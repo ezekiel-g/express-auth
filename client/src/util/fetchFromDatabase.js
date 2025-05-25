@@ -26,18 +26,18 @@ const fetchFromDatabase = async (
 
         if (body) options.body = JSON.stringify(body)
 
-        const response = await fetch(url, options)
+        const data = await fetch(url, options)
 
-        if (!response.ok) {
-            const errorData = await response.json().catch(() => ({}))
+        if (!data.ok) {
+            const errorData = await data.json().catch(() => ({}))
             if (!errorData.message) {
                 errorData.message =
-                    `HTTP ${response.status}: ${response.statusText}`
+                    `HTTP ${data.status}: ${data.statusText}`
             }
             return errorData
         }
 
-        return await response.json()
+        return await data.json()
     } catch (error) {
         console.error('Error:', error.message)
         return null

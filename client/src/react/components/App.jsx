@@ -12,14 +12,14 @@ import VerifyEmailPage from './auth/VerifyEmailPage'
 import ResetPasswordPage from './auth/ResetPasswordPage'
 import ChangeEmailPage from './auth/ChangeEmailPage'
 import DeleteAccountPage from './auth/DeleteAccountPage.jsx'
-import fetchFromDatabase from '../../util/fetchFromDatabase.js'
+import fetchWithRefresh from '../../util/fetchWithRefresh.js'
 
 const App = () => {
     const { setUser, loading, setLoading } = useAuthContext()
     const backEndUrl = import.meta.env.VITE_BACK_END_URL
 
     const checkIfSignedIn = useCallback(async () => {
-        const data = await fetchFromDatabase(
+        const data = await fetchWithRefresh(
             `${backEndUrl}/api/v1/sessions`,
             'GET',
             'application/json',

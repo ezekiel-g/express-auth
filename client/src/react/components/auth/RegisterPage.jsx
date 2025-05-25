@@ -2,7 +2,6 @@ import { useState, useEffect, useRef } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
 import useAuthContext from '../../contexts/auth/useAuthContext.js'
 import fetchFromDatabase from '../../../util/fetchFromDatabase.js'
-// import validateUser from '../../../util/validateUser.js'
 import messageUtility from '../../../util/messageUtility.jsx'
 
 const RegisterPage = ({ backEndUrl }) => {
@@ -24,27 +23,6 @@ const RegisterPage = ({ backEndUrl }) => {
         event.preventDefault()
         setSuccessMessages([])
         setErrorMessages([])
-
-        // // Optional front-end form validation
-
-        // const newErrors = []
-
-        // const usernameValid = await validateUser.validateUsername(username)
-        // if (!usernameValid.valid) newErrors.push(usernameValid.message)
-
-        // const emailValid = await validateUser.validateEmail(email)
-        // if (!emailValid.valid) newErrors.push(emailValid.message)
-
-        // const passwordValid = await validateUser.validatePassword(password)
-        // if (!passwordValid.valid) newErrors.push(passwordValid.message)
-
-        // if (password !== reEnteredPassword) {
-        //     newErrors.push('Passwords must match')
-        // }
-        // if (newErrors.length > 0) {
-        //     setErrorMessages(newErrors)
-        //     return
-        // }
 
         const data = await fetchFromDatabase(
             `${backEndUrl}/api/v1/users`,

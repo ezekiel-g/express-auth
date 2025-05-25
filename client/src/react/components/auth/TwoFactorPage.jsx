@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
 import useAuthContext from '../../contexts/auth/useAuthContext.js'
-import fetchFromDatabase from '../../../util/fetchFromDatabase.js'
+import fetchWithRefresh from '../../../util/fetchWithRefresh.js'
 import messageUtility from '../../../util/messageUtility.jsx'
 
 const TwoFactorPage = ({ backEndUrl }) => {
@@ -35,12 +35,12 @@ const TwoFactorPage = ({ backEndUrl }) => {
                 setQrCodeImage(null)
                 setTotpSecret(null)
             } else {
-                const data = await fetchFromDatabase(
+                const data = await fetchWithRefresh(
                     `${backEndUrl}/api/v1/verifications/get-totp-secret`,
                     'POST',
                     'application/json',
                     'include',
-                    user.id
+                    { id: user.id }
                 )
                 
                 if (!data || typeof data !== 'object') {
@@ -84,7 +84,7 @@ const TwoFactorPage = ({ backEndUrl }) => {
             }
         }
 
-        const data = await fetchFromDatabase(
+        const data = await fetchWithRefresh(
             `${backEndUrl}/api/v1/verifications/set-totp-auth`,
             'PATCH',
             'application/json',

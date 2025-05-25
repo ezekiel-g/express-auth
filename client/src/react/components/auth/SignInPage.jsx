@@ -2,7 +2,6 @@ import { useState, useEffect, useRef, useCallback } from 'react'
 import { useNavigate, useLocation, Link } from 'react-router-dom'
 import useAuthContext from '../../contexts/auth/useAuthContext.js'
 import fetchFromDatabase from '../../../util/fetchFromDatabase.js'
-import validateUser from '../../../util/validateUser.js'
 import messageUtility from '../../../util/messageUtility.jsx'
 
 const SignInPage = ({ backEndUrl }) => {
@@ -79,13 +78,13 @@ const SignInPage = ({ backEndUrl }) => {
 
         if (!totpCode.trim()) {
             isSigningIn.current = false
-            setErrorMessages(['TOTP code required'])
+            setErrorMessages(['6-digit TOTP required'])
             return
         }
 
         if (totpCode.length < 6) {
             isSigningIn.current = false
-            setErrorMessages(['TOTP code must be 6 digits'])
+            setErrorMessages(['TOTP must be 6 digits'])
             return
         }
 
@@ -99,7 +98,7 @@ const SignInPage = ({ backEndUrl }) => {
 
         if (!data || data.message !== 'Signed in successfully') {
             isSigningIn.current = false
-            setErrorMessages([data?.message || 'Invalid TOTP code'])
+            setErrorMessages([data?.message || 'Invalid TOTP'])
             return
         }
 
@@ -162,15 +161,19 @@ const SignInPage = ({ backEndUrl }) => {
 
 
     const goToConfirmationPage = async confirmationType => {
-        const emailValid = await validateUser.validateEmail(
-            email,
-            null,
-            'skipDuplicateCheck'
-        )
+        setSuccessMessages([])
+        setErrorMessages([])
 
-        if (!emailValid.valid) {
-            setSuccessMessages([])
-            setErrorMessages([emailValid.message])
+        const emailRegex = /^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$/
+        const emailFormatValid = emailRegex.test(email)
+
+        if (!email) {
+            setErrorMessages(['Email address required'])
+            return null            
+        }
+
+        if (!emailFormatValid) {
+            setErrorMessages(['Invalid email address format'])
             return null
         }
 
@@ -207,7 +210,7 @@ const SignInPage = ({ backEndUrl }) => {
         totpDisplay =
             <div className="mb-3">
                 <label htmlFor="totp-code" className="form-label">
-                    TOTP code from authenticator app:
+                    6-digit TOTP from authenticator app:
                 </label>
                 <input
                     type="text"

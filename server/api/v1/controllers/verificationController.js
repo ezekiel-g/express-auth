@@ -134,20 +134,25 @@ const confirmEmailChange = async (request, response) => {
     }
 }
 
-const validateUserInfo = async (request, response) => {
-    const { id, username, email, password, role } = request.body
-    const userObject = {}
-    
-    if (username) userObject.username = username
-    if (email) userObject.email = email
-    if (password) userObject.password = password
-    if (role) userObject.role = role
+const validateUserInfoForUpdate = async (request, response) => {
+    const { id, username, email, password, reEnteredPassword } = request.body
 
     try {
-        const validationObject = await validateUser(userObject, id, id)
-        return response.status(200).json({
-            message: validationObject.valid ? 'pass' : 'fail',
-            validationObject
+        validateSession(request, id)
+
+        const validationObject = await validateUser(
+            { username, email, password, reEnteredPassword },
+            id,
+            id
+        )
+        const statusCode = validationObject.valid ? 200 : 400
+        const messageText = validationObject.valid
+            ? 'Validation passed'
+            : 'Validation failed'
+
+        return response.status(statusCode).json({
+            message: messageText,
+            validationErrors: validationObject.validationErrors
         })
     } catch (error) {
         return handleDbError(response, error)
@@ -158,12 +163,12 @@ const getTotpSecret = async (request, response) => {
     const { id } = request.body    
 
     if (!id) {
-        console.error('User ID required in POST body')
+        console.error('`id: user.id` required in POST body')
         return response.status(400).json({ message: 'Error in request'})
     }
 
     try {
-        validateSession(request)
+        validateSession(request, id)
 
         const [sqlResult] = await dbConnection.execute(
             'SELECT email FROM users WHERE id = ?;',
@@ -306,9 +311,9 @@ const sendPasswordResetEmail = async (request, response) => {
 
 const requestDeleteUser = async (request, response) => {
     const { id } = request.body    
-    console.log(id)
+    
     if (!id) {
-        console.error('User ID required in POST body')
+        console.error('`id: user.id` required in POST body')
         return response.status(400).json({ message: 'Error in request'})
     }
 
@@ -365,9 +370,9 @@ const requestDeleteUser = async (request, response) => {
 
 const setTotpAuth = async (request, response) => {
     const { id, totpAuthOn, totpSecret, totpCode } = request.body    
-
+    
     if (!id) {
-        console.error('User ID required in POST body')
+        console.error('`id: user.id` required in POST body')
         return response.status(400).json({ message: 'Error in request'})
     }
 
@@ -501,7 +506,7 @@ const resetPassword = async (request, response) => {
 export default {
     verifyAccountByEmail,
     confirmEmailChange,
-    validateUserInfo,
+    validateUserInfoForUpdate,
     getTotpSecret,
     resendVerificationEmail,
     sendPasswordResetEmail,
