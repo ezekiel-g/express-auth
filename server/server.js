@@ -1,5 +1,6 @@
 import dotenv from 'dotenv'
 import express from 'express'
+import rateLimit from 'express-rate-limit'
 import cors from 'cors'
 import cookieParser from 'cookie-parser'
 import path from 'path'
@@ -12,6 +13,13 @@ dotenv.config()
 
 const app = express()
 const port = process.env.PORT || 3000
+const limiter = rateLimit({
+    windowMs: 15 * 60 * 1000,
+    max: 100,
+    message: 'Too many requests — please try again later',
+    standardHeaders: true,
+    legacyHeaders: false
+})
 const corsOptions = {
     origin: process.env.FRONT_END_URL,
     methods: ['GET', 'POST', 'PATCH', 'DELETE'],
@@ -21,6 +29,7 @@ const __filename = fileURLToPath(import.meta.url)
 const __dirname = path.dirname(__filename)
 
 app.use(express.json())
+app.use(limiter)
 app.use(cors(corsOptions))
 app.use(cookieParser())
 
@@ -30,8 +39,8 @@ app.use('/api/v1/verifications', verificationRoutes)
 
 if (process.env.NODE_ENV === 'production') {
     const clientDistPath = path.join(__dirname, '../client/dist')
-    app.use(express.static(clientDistPath))
 
+    app.use(express.static(clientDistPath))
     app.get('*', (request, response) => {
         response.sendFile(path.join(clientDistPath, 'index.html'))
     })
