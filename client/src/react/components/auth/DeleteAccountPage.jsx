@@ -16,9 +16,7 @@ const DeleteAccountPage = ({ backEndUrl }) => {
 
         const data = await fetchFromDatabase(
             `${backEndUrl}/api/v1/users?token=${token}`,
-            'DELETE',
-            'application/json',
-            'include'
+            'DELETE'
         )
 
         if (!data || typeof data !== 'object' || !data.message) {

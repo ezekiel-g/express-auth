@@ -20,6 +20,8 @@ const validateUser = async (
 ) => {
     const columnNames = Object.keys(entries)
     const validationErrors = []
+    let currentUser = null
+    let infoChanged = false
 
     for (let i = 0; i < columnNames.length; i++) {
         const rowValue = entries[columnNames[i]]
@@ -70,7 +72,6 @@ const validateUser = async (
                 )
                 continue
             }
-
             if (skipDuplicateCheck !== 'skipDuplicateCheck') {
                 const duplicateCheck = await checkForDuplicate(
                     { email: rowValue },
@@ -115,12 +116,52 @@ const validateUser = async (
                     continue
                 }
             }
+
         } else if (columnNames[i] === 'reEnteredPassword') {
-            if (entries['password'] && rowValue !== entries['password']) {
+            if (entries['password'] && (rowValue !== entries['password'])) {
                 validationErrors.push('Passwords must match')
                 continue
             }
         }
+    }
+
+    if (excludeIdForUpdate) {
+        const users = await getUsers()
+        currentUser = users.find(user => user.id === excludeIdForUpdate)
+        
+        if (currentUser) {
+            for (let i = 0; i < columnNames.length; i++) {
+                const rowValue = entries[columnNames[i]]
+                const existingValue = currentUser[columnNames[i]]
+
+                if (
+                    columnNames[i] === 'password' &&
+                    (!rowValue || rowValue.trim() === '')
+                ) {
+                    continue
+                }
+
+                if (columnNames[i] === 'reEnteredPassword') {
+                    if (
+                        entries['password'] &&
+                        rowValue !== entries['password']
+                    ) {
+                        validationErrors.push('Passwords must match')
+                        continue
+                    }
+                    continue
+                }
+
+                if (rowValue !== existingValue) {
+                    infoChanged = true
+                    break
+                }
+            }
+        }
+    }
+    
+    if (excludeIdForUpdate && !infoChanged) { 
+        validationErrors.push('No changes detected') 
     }
 
     const validationResult = {

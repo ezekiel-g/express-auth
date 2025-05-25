@@ -233,7 +233,7 @@ describe('sessionController', () => {
 
             expect(mockResponse.status).toHaveBeenCalledWith(200)
             expect(mockResponse.json).toHaveBeenCalledWith({
-                message: 'Please provide your TOTP code',
+                message: 'Please provide your 6-digit TOTP',
                 requireTotp: true,
                 userId: testUser.id
             })
@@ -363,7 +363,7 @@ describe('sessionController', () => {
 
             expect(mockResponse.status).toHaveBeenCalledWith(400)
             expect(mockResponse.json).toHaveBeenCalledWith({
-                message: 'userId and TOTP code required'
+                message: 'userId and TOTP required'
             })
         })
 
@@ -381,7 +381,7 @@ describe('sessionController', () => {
             })
         })
 
-        it('should respond with 401 if TOTP code is invalid', async () => {
+        it('should respond with 401 if TOTP is invalid', async () => {
             const userFromDb = [{
                 id: 1,
                 username: 'testuser',
@@ -412,11 +412,11 @@ describe('sessionController', () => {
             })
             expect(mockResponse.status).toHaveBeenCalledWith(401)
             expect(mockResponse.json).toHaveBeenCalledWith({
-                message: 'Invalid TOTP code'
+                message: 'Invalid TOTP'
             })
         })
 
-        it('should respond with 200 and set tokens when TOTP code ' +
+        it('should respond with 200 and set tokens when TOTP ' +
             'is valid', async () => {
             const userFromDb = [{
                 id: 1,

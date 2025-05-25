@@ -81,7 +81,7 @@ const createSession = async (request, response) => {
 
         if (user.totp_auth_on) {
             return response.status(200).json({
-                message: 'Please provide your TOTP code',
+                message: 'Please provide your 6-digit TOTP',
                 requireTotp: true,
                 userId: user.id
             })
@@ -179,7 +179,7 @@ const verifyTotp = async (request, response) => {
 
     if (!userId || !totpCode) {
         return response.status(400).json({
-            message: 'userId and TOTP code required'
+            message: 'userId and 6-digit TOTP required'
         })
     }
 
@@ -218,7 +218,7 @@ const verifyTotp = async (request, response) => {
 
         if (!totpValid) {
             return response.status(401).json({
-                message: 'Invalid TOTP code'
+                message: 'Invalid TOTP'
             })
         }
 

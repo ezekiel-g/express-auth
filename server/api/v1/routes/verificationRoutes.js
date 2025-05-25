@@ -13,8 +13,8 @@ verificationRouter.get(
 )
 
 verificationRouter.post(
-    '/validate-user-info',
-    verificationController.validateUserInfo
+    '/validate-user-info-update',
+    verificationController.validateUserInfoForUpdate
 )
 verificationRouter.post(
     '/get-totp-secret',

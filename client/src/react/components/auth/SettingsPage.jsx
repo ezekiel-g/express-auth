@@ -1,9 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
 import useAuthContext from '../../contexts/auth/useAuthContext.js'
-import fetchFromDatabase from '../../../util/fetchFromDatabase.js'
 import fetchWithRefresh from '../../../util/fetchWithRefresh.js'
-// import validateUser from '../../../util/validateUser.js'
 import messageUtility from '../../../util/messageUtility.jsx'
 
 const SettingsPage = ({ backEndUrl }) => {
@@ -36,56 +34,44 @@ const SettingsPage = ({ backEndUrl }) => {
 
         shouldSubmit.current = false
 
-        // // Optional front-end form validation
+        const data = await fetchWithRefresh(
+            `${backEndUrl}/api/v1/verifications/validate-user-info-update`,
+            'POST',
+            'application/json',
+            'include',
+            { id: user.id, username, email, password, reEnteredPassword }
+        )
+        
+        if (!data || typeof data !== 'object' || !data.message) {
+            setErrorMessages(['User info check failed'])
+            return
+        }
 
-        // const newErrors = []
+        if (data.validationErrors?.length > 0) {
+            setErrorMessages(data.validationErrors)
+            return
+        }
 
-        // const usernameValid =
-        //     await validateUser.validateUsername(username, user.id)
-        // if (!usernameValid.valid) newErrors.push(usernameValid.message)
+        if (data.message === 'Validation passed') {
+            const updatedUserDetails = {}
 
-        // const emailValid = await validateUser.validateEmail(email, user.id)
-        // if (!emailValid.valid) newErrors.push(emailValid.message)
-
-        // if (password && password !== '') {
-        //     const passwordValid =
-        //         await validateUser.validatePassword(password, user.id)
-        //     if (!passwordValid.valid) newErrors.push(passwordValid.message)
-        // }
-        // if (
-        //     (password && password !== reEnteredPassword) ||
-        //     (!password && reEnteredPassword)
-        // ) {
-        //     newErrors.push('Passwords must match')
-        // }
-        // if (newErrors.length > 0) {
-        //     setErrorMessages(newErrors)
-        //     return
-        // }
-
-        const updatedUserDetails = {}
-
-        // if (username !== user?.username) updatedUserDetails.username = username
-        // if (email !== user?.email) updatedUserDetails.email = email
-        // if (password && password !== '') {
-        //     updatedUserDetails.password = password
-        // }
-        // if (Object.keys(updatedUserDetails).length === 0) {
-        //     setErrorMessages(['No changes detected'])
-        //     return
-        // }
-
-        // Comment the below line back in and the above validations out (except
-        // const updatedUserDetails = {}) to skip front-end validation
-
-        Object.assign(updatedUserDetails, { username, email, password })
-        setPendingUserUpdate(updatedUserDetails)
-        navigate('/confirm', {
-            state: {
-                confirmationType: 'confirmUserUpdate',
-                updatedUserDetails
+            if (username !== user.username) {
+                updatedUserDetails.username = username
             }
-        })
+            if (email !== user.email) updatedUserDetails.email = email
+            if (password) updatedUserDetails.password = password
+
+            setPendingUserUpdate(updatedUserDetails)
+            navigate('/confirm', {
+                state: {
+                    confirmationType: 'confirmUserUpdate',
+                    updatedUserDetails
+                }
+            })
+            return
+        }
+
+        setErrorMessages([data.message])
     }
     
     const handleSecondSubmit = useCallback(async updated => {
@@ -100,7 +86,7 @@ const SettingsPage = ({ backEndUrl }) => {
             'include',
             updatedUser
         )
-        console.log('Data:', data)
+        
         if (!data || typeof data !== 'object' || !data.message) {
             setErrorMessages(['Update failed'])
             return
@@ -146,14 +132,14 @@ const SettingsPage = ({ backEndUrl }) => {
         if (hasConfirmedDeletion.current) return
         hasConfirmedDeletion.current = true
 
-        const data = await fetchFromDatabase(
+        const data = await fetchWithRefresh(
             `${backEndUrl}/api/v1/verifications/request-account-deletion`,
             'POST',
             'application/json',
             'include',
-            user.id
+            { id: user.id }
         )
-
+        
         if (!data || typeof data !== 'object' || !data.message) {
             setErrorMessages(['Account deletion request failed'])
             return

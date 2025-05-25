@@ -120,19 +120,6 @@ const updateUser = async (request, response) => {
 
     try {
         validateSession(request, id)
-
-        const validationObject = await validateUser(
-            { username, email, password },
-            id,
-            id
-        )
-        
-        if (!validationObject.valid) {
-            return response.status(400).json({
-                message: 'Input validation failed',
-                validationErrors: validationObject.validationErrors
-            })
-        }  
         
         const [sqlSelect] = await dbConnection.execute(
             `SELECT
@@ -202,7 +189,7 @@ const updateUser = async (request, response) => {
             typeof password === 'string' && password.trim() !== ''
         const emailChanged = email !== sqlSelect[0].email
         const roleChanged = updatedRole !== sqlSelect[0].role
-
+        
         if (
             !usernameChanged &&
             !passwordChanged &&
@@ -237,11 +224,10 @@ const updateUser = async (request, response) => {
 
         updateQuery = updateQuery.slice(0, -1) + ' WHERE id = ?;'
         updateValues.push(id)
-        console.log('updateQuery:', updateQuery)
-        console.log('updateValues:', updateValues)
+
         await dbConnection.execute(updateQuery, updateValues)
 
-        const mainSuccessMessage = 'User updated successfully'
+        let mainSuccessMessage = 'User updated successfully'
         const successfulUpdates = []
 
         if (usernameChanged) {

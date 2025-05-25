@@ -1,7 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import fetchFromDatabase from '../../../util/fetchFromDatabase.js'
-import validateUser from '../../../util/validateUser.js'
 import messageUtility from '../../../util/messageUtility.jsx'
 
 const ResetPasswordPage = ({ backEndUrl }) => {
@@ -30,8 +29,15 @@ const ResetPasswordPage = ({ backEndUrl }) => {
 
         if (!token) newErrors.push('Missing token')
 
-        const passwordValid = await validateUser.validatePassword(newPassword)
-        if (!passwordValid.valid) newErrors.push(passwordValid.message)
+        const passwordRegex =
+            /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[!@#$%^&*]).{16,}$/
+
+        const passwordFormatValid = passwordRegex.test(newPassword)
+        if (!passwordFormatValid) newErrors.push(
+            'Password must be at least 16 characters and include at least ' +
+            'one lowercase letter, one capital letter, one number and one ' +
+            'symbol (!@#$%^&*)'            
+        )
 
         if (newPassword !== reEnteredPassword) {
             newErrors.push('Passwords must match')

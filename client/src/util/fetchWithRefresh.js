@@ -29,7 +29,7 @@ const fetchWithRefresh = async (
 
     if (!refreshData.ok) {
         window.location.href = '/sign-in'
-        throw new Error('Session expired')
+        throw new Error('No active session')
     }
 
     const refreshedData =

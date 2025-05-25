@@ -2,8 +2,8 @@ import { useState, useEffect, useRef } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
 import bcryptjs from 'bcryptjs'
 import useAuthContext from '../../contexts/auth/useAuthContext.js'
+import fetchWithRefresh from '../../../util/fetchWithRefresh.js'
 import messageUtility from '../../../util/messageUtility.jsx'
-import fetchFromDatabase from '../../../util/fetchFromDatabase.js'
 
 const ConfirmationPage = ({ backEndUrl }) => {
     const { user, setUser, setCanEditSettings } = useAuthContext()
@@ -20,7 +20,13 @@ const ConfirmationPage = ({ backEndUrl }) => {
             navigate('/')
             return
         }
-        const requiresUser = ['enterPassword', 'confirmUserUpdate', 'signOut']
+        const requiresUser = [
+            'enterPassword',
+            'confirmUserUpdate',
+            'signOut',
+            'turnOffTwoFactor',
+            'confirmDeleteAccount'
+        ]
         if (
             requiresUser.includes(confirmationType) &&
             !user && !isSigningOut.current
@@ -55,7 +61,7 @@ const ConfirmationPage = ({ backEndUrl }) => {
                 return
             }
 
-            const data = await fetchFromDatabase(
+            const data = await fetchWithRefresh(
                 `${backEndUrl}/api/v1/users/${user.id}`,
                 'GET',
                 'application/json',
@@ -114,7 +120,7 @@ const ConfirmationPage = ({ backEndUrl }) => {
         question = 'Sign out?'
 
         confirmFunction = async () => {
-            const data = await fetchFromDatabase(
+            const data = await fetchWithRefresh(
                 `${backEndUrl}/api/v1/sessions`,
                 'DELETE',
                 'application/json',
