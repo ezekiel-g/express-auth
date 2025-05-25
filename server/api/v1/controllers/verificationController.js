@@ -140,19 +140,48 @@ const validateUserInfoForUpdate = async (request, response) => {
     try {
         validateSession(request, id)
 
-        const validationObject = await validateUser(
-            { username, email, password, reEnteredPassword },
-            id,
-            id
-        )
-        const statusCode = validationObject.valid ? 200 : 400
-        const messageText = validationObject.valid
-            ? 'Validation passed'
-            : 'Validation failed'
+        const validationErrors = []
+
+        const usernameValid = await validateUser.validateUsername(username, id)
+        if (!usernameValid.valid) validationErrors.push(usernameValid.message)
+        
+        const emailValid = await validateUser.validateEmail(email, id)
+        if (!emailValid.valid) validationErrors.push(emailValid.message)
+
+        if (password) {
+            const passwordValid =
+                await validateUser.validatePassword(password, id)
+            if (!passwordValid.valid) {
+                validationErrors.push(passwordValid.message)
+            }
+        }
+        
+        if (
+            (password && password !== reEnteredPassword) ||
+            (!password && reEnteredPassword)
+        ) {
+            validationErrors.push('Passwords must match')
+        }
+
+        if (validationErrors.length === 0) {
+            const changeHappened = await validateUser.checkForChanges(
+                { email, username, password },
+                id
+            )
+            
+            if (!changeHappened.valid) {
+                validationErrors.push(changeHappened.message)
+            }
+        }
+
+        const statusCode = validationErrors.length === 0 ? 200 : 400
+        const messageText = validationErrors.length === 0
+            ? 'Input validation passed'
+            : 'Input validation failed'
 
         return response.status(statusCode).json({
             message: messageText,
-            validationErrors: validationObject.validationErrors
+            validationErrors
         })
     } catch (error) {
         return handleDbError(response, error)
