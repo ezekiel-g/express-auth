@@ -52,7 +52,7 @@ const SettingsPage = ({ backEndUrl }) => {
             return
         }
 
-        if (data.message === 'Validation passed') {
+        if (data.message === 'Input validation passed') {
             const updatedUserDetails = {}
 
             if (username !== user.username) {
@@ -77,8 +77,9 @@ const SettingsPage = ({ backEndUrl }) => {
     const handleSecondSubmit = useCallback(async updated => {
         if (hasSubmittedSecond.current) return
         hasSubmittedSecond.current = true
-        
+
         const updatedUser = Object.assign({}, user, updated)
+        
         const data = await fetchWithRefresh(
             `${backEndUrl}/api/v1/users/${user.id}`,
             'PATCH',

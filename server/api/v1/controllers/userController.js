@@ -48,15 +48,27 @@ const createUser = async (request, response) => {
     if (!role) role = 'user'
 
     try {
-        const validationObject =
-            await validateUser({ username, email, password, reEnteredPassword })
+        const validationErrors = []
+
+        const usernameValid = await validateUser.validateUsername(username)
+        if (!usernameValid.valid) validationErrors.push(usernameValid.message)
         
-        if (!validationObject.valid) {
+        const emailValid = await validateUser.validateEmail(email)
+        if (!emailValid.valid) validationErrors.push(emailValid.message)
+            
+        const passwordValid = await validateUser.validatePassword(password)
+        if (!passwordValid.valid) validationErrors.push(passwordValid.message)
+
+        if (password !== reEnteredPassword) {
+            validationErrors.push('Passwords must match')
+        }
+
+        if (validationErrors.length > 0) {
             return response.status(400).json({
                 message: 'Input validation failed',
-                validationErrors: validationObject.validationErrors
+                validationErrors
             })
-        }        
+        }            
 
         const verificationToken = crypto.randomBytes(32).toString('hex')
         const tokenExpires = new Date(Date.now() + 60 * 60 * 1000)
@@ -117,9 +129,62 @@ const createUser = async (request, response) => {
 const updateUser = async (request, response) => {
     const { id } = request.params
     const { username, email, password, role } = request.body
-
+    
     try {
         validateSession(request, id)
+
+        const validationErrors = []
+        const changeCheckObject = {}
+
+        if (username) {
+            const usernameValid =
+                await validateUser.validateUsername(username, id)
+
+            if (!usernameValid.valid) {
+                validationErrors.push(usernameValid.message)
+            } else {
+                changeCheckObject.username = username
+            }
+        }
+
+        if (email) {
+            const emailValid = await validateUser.validateEmail(email, id)
+
+            if (!emailValid.valid) {
+                validationErrors.push(emailValid.message)
+            } else {
+                changeCheckObject.email = email
+            }
+        }
+
+        if (password) {
+            const passwordValid =
+                await validateUser.validatePassword(password, id)
+
+            if (!passwordValid.valid) {
+                validationErrors.push(passwordValid.message)
+            } else {
+                changeCheckObject.password = password
+            }   
+        }
+
+        if (validationErrors.length === 0) {
+            const changeHappened = await validateUser.checkForChanges(
+                changeCheckObject,
+                id
+            )
+            
+            if (!changeHappened.valid) {
+                validationErrors.push(changeHappened.message)
+            }
+        }
+
+        if (validationErrors.length > 0) {
+            return response.status(400).json({
+                message: 'Input validation failed',
+                validationErrors
+            })
+        }   
         
         const [sqlSelect] = await dbConnection.execute(
             `SELECT
