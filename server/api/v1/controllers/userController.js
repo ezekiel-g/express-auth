@@ -44,7 +44,7 @@ const readUser = async (request, response) => {
 const createUser = async (request, response) => {
     const { username, email, password, reEnteredPassword } = request.body
     let { role } = request.body
-
+    
     if (!role) role = 'user'
 
     try {
@@ -62,7 +62,7 @@ const createUser = async (request, response) => {
         if (password !== reEnteredPassword) {
             validationErrors.push('Passwords must match')
         }
-
+        
         if (validationErrors.length > 0) {
             return response.status(400).json({
                 message: 'Input validation failed',
@@ -132,42 +132,42 @@ const updateUser = async (request, response) => {
     
     try {
         validateSession(request, id)
-
+        
         const validationErrors = []
         const changeCheckObject = {}
-
+        
         if (username) {
             const usernameValid =
-                await validateUser.validateUsername(username, id)
-
+            await validateUser.validateUsername(username, id)
+            
             if (!usernameValid.valid) {
                 validationErrors.push(usernameValid.message)
             } else {
                 changeCheckObject.username = username
             }
         }
-
+        
         if (email) {
             const emailValid = await validateUser.validateEmail(email, id)
-
+            
             if (!emailValid.valid) {
                 validationErrors.push(emailValid.message)
             } else {
                 changeCheckObject.email = email
             }
         }
-
+        
         if (password) {
             const passwordValid =
-                await validateUser.validatePassword(password, id)
-
+            await validateUser.validatePassword(password, id)
+            
             if (!passwordValid.valid) {
                 validationErrors.push(passwordValid.message)
             } else {
                 changeCheckObject.password = password
             }   
         }
-
+        
         if (validationErrors.length === 0) {
             const changeHappened = await validateUser.checkForChanges(
                 changeCheckObject,
@@ -178,7 +178,7 @@ const updateUser = async (request, response) => {
                 validationErrors.push(changeHappened.message)
             }
         }
-
+        
         if (validationErrors.length > 0) {
             return response.status(400).json({
                 message: 'Input validation failed',
@@ -201,7 +201,7 @@ const updateUser = async (request, response) => {
                 ON u.id = ut.user_id AND ut.token_type = 'email_change'
             WHERE u.id = ?`, [id]
         )
-
+        
         if (sqlSelect.length === 0) {
             return response.status(404).json({ message: 'User not found' })
         }
@@ -212,7 +212,7 @@ const updateUser = async (request, response) => {
         let emailChangeToken = sqlSelect[0].email_change_token
         let tokenExpires = sqlSelect[0].token_expires
         let emailPending = sqlSelect[0].email_pending
-
+        
         if (email !== sqlSelect[0].email) {
             emailChangeToken = crypto.randomBytes(32).toString('hex')
             tokenExpires = new Date(Date.now() + 60 * 60 * 1000)
@@ -230,12 +230,12 @@ const updateUser = async (request, response) => {
                     used_at = NULL;`,
                 [id, emailChangeToken, tokenExpires]
             )
-
+            
             const changeEmailLink =
                 `${frontEndUrl}/change-email?token=${emailChangeToken}`
             const emailContent =
                 emailChangeEmail(updatedUsername, changeEmailLink)
-
+            
             await emailTransporter.sendMail({
                 from: process.env.EMAIL_USER,
                 to: email,

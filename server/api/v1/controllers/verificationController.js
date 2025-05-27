@@ -198,7 +198,7 @@ const getTotpSecret = async (request, response) => {
 
     try {
         validateSession(request, id)
-
+        
         const [sqlResult] = await dbConnection.execute(
             'SELECT email FROM users WHERE id = ?;',
             [id]
@@ -216,7 +216,6 @@ const getTotpSecret = async (request, response) => {
         )
         const qrCodeImage = await qrcode.toDataURL(totpUri)
         
-
         return response.status(200).json({ totpSecret, qrCodeImage })
     } catch (error) {
         return response.status(401).json({ message: error.message })
@@ -345,15 +344,15 @@ const requestDeleteUser = async (request, response) => {
         console.error('`id: user.id` required in POST body')
         return response.status(400).json({ message: 'Error in request'})
     }
-
+    
     try {
         validateSession(request, id)
-
+        
         const [sqlResult] = await dbConnection.execute(
             'SELECT username, email FROM users WHERE id = ?;',
             [id]
         )
-
+        
         if (sqlResult.length === 0) {
             return response.status(404).json({ message: 'User not found' })
         }
@@ -407,7 +406,7 @@ const setTotpAuth = async (request, response) => {
 
     try {
         validateSession(request, id)
-
+        
         if (!totpAuthOn) {
             await dbConnection.execute(
                 `UPDATE users
@@ -424,24 +423,24 @@ const setTotpAuth = async (request, response) => {
                 message: 'Two-factor authentication disabled successfully'
             })
         }
-
+        
         if (!totpSecret || !totpCode) {
             return response.status(400).json({
                 message: 'Missing required 2FA fields'
             })
         }
-
+        
         const isValid = otplib.authenticator.check(totpCode, totpSecret)
-
+        
         if (!isValid) {
             return response.status(400).json({
                 message: 'Invalid authentication code'
             })
         }
-
+        
         const { encryptedTotpSecret, initVector, authTag } =
             encryptionUtility.encryptTotpSecret(totpSecret)
-
+        
         await dbConnection.execute(
             `UPDATE users
             SET 
@@ -452,7 +451,7 @@ const setTotpAuth = async (request, response) => {
             WHERE id = ?;`,
             [encryptedTotpSecret, initVector, authTag, id]
         )
-
+        
         return response.status(200).json({
             message: 'Two-factor authentication enabled successfully'
         })
@@ -481,9 +480,8 @@ const resetPassword = async (request, response) => {
                 message: 'Invalid/expired token or invalid email address'
             })
         }
-
+        
         const user = sqlResultUser[0]
-
         const [sqlResultToken] = await dbConnection.execute(
             `SELECT token_value, expires_at
             FROM user_tokens
@@ -523,7 +521,7 @@ const resetPassword = async (request, response) => {
                 message: 'Password reset request received'
             })
         }
-
+        
         return response.status(200).json({
             message: 'Password reset successfully'
         })
