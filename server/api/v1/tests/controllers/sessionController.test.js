@@ -29,6 +29,7 @@ describe('sessionController', () => {
     beforeEach(() => { jest.clearAllMocks() })
     beforeAll(() => {
         jest.spyOn(console, 'error').mockImplementation(() => {})
+        global.fetch = jest.fn()
     })
     afterAll(() => { console.error.mockRestore() })
 
@@ -92,7 +93,7 @@ describe('sessionController', () => {
     })
 
     describe('createSession', () => {
-        it('should sign in successfully and set tokens' +
+        it('should sign in successfully and set tokens ' +
             'when credentials are valid', async () => {
             const testUser = {
                 id: 42,
@@ -106,7 +107,8 @@ describe('sessionController', () => {
             const mockRequest = {
                 body: {
                     email: testUser.email,
-                    password: 'plaintextpassword'
+                    password: 'plaintextpassword',
+                    hCaptchaToken: 'validtoken'
                 },
                 cookies: {}
             }
@@ -115,9 +117,12 @@ describe('sessionController', () => {
                 Object.assign({}, testUser)
             ]])
             bcryptjs.compare.mockResolvedValue(true)
-            jsonwebtoken.sign.mockImplementation(
-                userInfo => `token-${userInfo.id}`
-            )
+            jsonwebtoken.sign.mockImplementation(userInfo => `token-${userInfo.id}`)
+
+            fetch.mockResolvedValueOnce({
+                json: () => Promise.resolve({ success: true })
+            })
+
             await sessionController.createSession(mockRequest, mockResponse)
 
             expect(dbConnection.execute).toHaveBeenCalledWith(
@@ -148,10 +153,18 @@ describe('sessionController', () => {
 
         it('should respond with 401 if user not found', async () => {
             const mockRequest = {
-                body: { email: 'nouser@example.com', password: 'any' }
+                body: {
+                    email: 'notauser@example.com',
+                    password: 'somepassword',
+                    hCaptchaToken: 'validtoken'
+                }
             }
 
             dbConnection.execute.mockResolvedValue([[]])
+
+            fetch.mockResolvedValueOnce({
+                json: () => Promise.resolve({ success: true })
+            })
 
             await sessionController.createSession(mockRequest, mockResponse)
 
@@ -169,13 +182,19 @@ describe('sessionController', () => {
                 password: 'hashedpassword'
             }
             const mockRequest = {
-                body: { email: testUser.email, password: 'wrongpassword' }
+                body: {
+                    email: testUser.email,
+                    password: 'wrongpassword',
+                    hCaptchaToken: 'validtoken'
+                }
             }
 
-            dbConnection.execute.mockResolvedValue([[
-                Object.assign({}, testUser)
-            ]])
+            dbConnection.execute.mockResolvedValue([[Object.assign({}, testUser)]])
             bcryptjs.compare.mockResolvedValue(false)
+
+            fetch.mockResolvedValueOnce({
+                json: () => Promise.resolve({ success: true })
+            })
 
             await sessionController.createSession(mockRequest, mockResponse)
 
@@ -194,13 +213,19 @@ describe('sessionController', () => {
                 account_verified: false
             }
             const mockRequest = {
-                body: { email: testUser.email, password: 'plaintextpassword' }
+                body: {
+                    email: testUser.email,
+                    password: 'plaintextpassword',
+                    hCaptchaToken: 'validtoken'
+                }
             }
 
-            dbConnection.execute.mockResolvedValue([[
-                Object.assign({}, testUser)
-            ]])
+            dbConnection.execute.mockResolvedValue([[Object.assign({}, testUser)]])
             bcryptjs.compare.mockResolvedValue(true)
+
+            fetch.mockResolvedValueOnce({
+                json: () => Promise.resolve({ success: true })
+            })
 
             await sessionController.createSession(mockRequest, mockResponse)
 
@@ -221,13 +246,19 @@ describe('sessionController', () => {
                 totp_auth_on: true
             }
             const mockRequest = {
-                body: { email: testUser.email, password: 'plaintextpassword' }
+                body: {
+                    email: testUser.email,
+                    password: 'plaintextpassword',
+                    hCaptchaToken: 'validtoken'
+                }
             }
 
-            dbConnection.execute.mockResolvedValue([[
-                Object.assign({}, testUser)
-            ]])
+            dbConnection.execute.mockResolvedValue([[Object.assign({}, testUser)]])
             bcryptjs.compare.mockResolvedValue(true)
+
+            fetch.mockResolvedValueOnce({
+                json: () => Promise.resolve({ success: true })
+            })
 
             await sessionController.createSession(mockRequest, mockResponse)
 
@@ -241,10 +272,18 @@ describe('sessionController', () => {
 
         it('should respond with 500 on unexpected error', async () => {
             const mockRequest = {
-                body: { email: 'any@example.com', password: 'any' }
+                body: {
+                    email: 'someone@example.com',
+                    password: 'somepassword',
+                    hCaptchaToken: 'validtoken'
+                }
             }
 
             dbConnection.execute.mockRejectedValue(new Error('DB failure'))
+
+            fetch.mockResolvedValueOnce({
+                json: () => Promise.resolve({ success: true })
+            })
 
             await sessionController.createSession(mockRequest, mockResponse)
 
@@ -363,7 +402,7 @@ describe('sessionController', () => {
 
             expect(mockResponse.status).toHaveBeenCalledWith(400)
             expect(mockResponse.json).toHaveBeenCalledWith({
-                message: 'userId and TOTP required'
+                message: 'userId and 6-digit TOTP required'
             })
         })
 
