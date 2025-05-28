@@ -4,6 +4,7 @@ import rateLimit from 'express-rate-limit'
 import cors from 'cors'
 import cookieParser from 'cookie-parser'
 import path from 'path'
+import fs from 'fs'
 import { fileURLToPath } from 'url'
 import userRoutes from './api/v1/routes/userRoutes.js'
 import sessionRoutes from './api/v1/routes/sessionRoutes.js'
@@ -40,10 +41,14 @@ app.use('/api/v1/verifications', verificationRoutes)
 if (process.env.NODE_ENV === 'production') {
     const clientDistPath = path.join(__dirname, '../client/dist')
 
-    app.use(express.static(clientDistPath))
-    app.get('*', (request, response) => {
-        response.sendFile(path.join(clientDistPath, 'index.html'))
-    })
+    if (fs.existsSync(clientDistPath)) {
+        app.use(express.static(clientDistPath))
+        app.get('*', (request, response) => {
+            response.sendFile(path.join(clientDistPath, 'index.html'))
+        })
+    } else {
+        console.log('No dist folder found — skipping static file serving')
+    }
 }
 
 app.listen(port, () => {
