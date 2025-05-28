@@ -134,14 +134,14 @@ const createSession = async (request, response) => {
             httpOnly: true,
             secure: nodeEnv === 'production',
             maxAge: 3600000,
-            sameSite: 'Strict'
+            sameSite: nodeEnv === 'production' ? 'none' : 'lax'
         })
 
         response.cookie('refreshToken', refreshToken, {
             httpOnly: true,
             secure: nodeEnv === 'production',
             maxAge: 7 * 24 * 60 * 60 * 1000,
-            sameSite: 'Strict'
+            sameSite: nodeEnv === 'production' ? 'none' : 'lax'
         })
         
         return response.status(200).json({
@@ -158,13 +158,13 @@ const deleteSession = (request, response) => {
     response.clearCookie('accessToken', {
         httpOnly: true,
         secure: nodeEnv === 'production',
-        sameSite: 'Strict'
+        sameSite: nodeEnv === 'production' ? 'none' : 'lax'
     })
 
     response.clearCookie('refreshToken', {
         httpOnly: true,
         secure: nodeEnv === 'production',
-        sameSite: 'Strict'
+        sameSite: nodeEnv === 'production' ? 'none' : 'lax'
     })
 
     return response.status(200).json({ message: 'Signed out successfully' })
@@ -193,7 +193,7 @@ const refreshSession = (request, response) => {
             httpOnly: true,
             secure: nodeEnv === 'production',
             maxAge: 3600000,
-            sameSite: 'Strict'
+            sameSite: nodeEnv === 'production' ? 'none' : 'lax'
         })
 
         return response.status(200).json({ message: 'Session refreshed' })
@@ -269,14 +269,14 @@ const verifyTotp = async (request, response) => {
             httpOnly: true,
             secure: nodeEnv === 'production',
             maxAge: 3600000,
-            sameSite: 'Strict'
+            sameSite: nodeEnv === 'production' ? 'none' : 'lax'
         })
 
         response.cookie('refreshToken', refreshToken, {
             httpOnly: true,
             secure: nodeEnv === 'production',
             maxAge: 7 * 24 * 60 * 60 * 1000,
-            sameSite: 'Strict'
+            sameSite: nodeEnv === 'production' ? 'none' : 'lax'
         })
 
         return response.status(200).json({
