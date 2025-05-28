@@ -72,7 +72,6 @@ const SettingsPage = ({ backEndUrl }) => {
             return
         }
 
-        Object.assign(updatedUserDetails, { username, email, password })
         setPendingUserUpdate(updatedUserDetails)
         navigate('/confirm', {
             state: {
