@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
 import useAuthContext from '../../contexts/auth/useAuthContext.js'
+import validateUser from '../../../util/validateUser.js'
 import fetchWithRefresh from '../../../util/fetchWithRefresh.js'
 import messageUtility from '../../../util/messageUtility.jsx'
 
@@ -34,44 +35,90 @@ const SettingsPage = ({ backEndUrl }) => {
 
         shouldSubmit.current = false
 
-        const data = await fetchWithRefresh(
-            `${backEndUrl}/api/v1/verifications/validate-user-info-update`,
-            'POST',
-            'application/json',
-            'include',
-            { id: user.id, username, email, password, reEnteredPassword }
-        )
-        
-        if (!data || typeof data !== 'object' || !data.message) {
-            setErrorMessages(['User info check failed'])
+        const newErrors = []
+
+        const usernameValid =
+            await validateUser.validateUsername(username, user.id)
+        if (!usernameValid.valid) newErrors.push(usernameValid.message)
+
+        const emailValid = await validateUser.validateEmail(email, user.id)
+        if (!emailValid.valid) newErrors.push(emailValid.message)
+
+        if (password && password !== '') {
+            const passwordValid =
+                await validateUser.validatePassword(password, user.id)
+            if (!passwordValid.valid) newErrors.push(passwordValid.message)
+        }
+        if (
+            (password && password !== reEnteredPassword) ||
+            (!password && reEnteredPassword)
+        ) {
+            newErrors.push('Passwords must match')
+        }
+        if (newErrors.length > 0) {
+            setErrorMessages(newErrors)
             return
         }
 
-        if (data.validationErrors?.length > 0) {
-            setErrorMessages(data.validationErrors)
+        const updatedUserDetails = {}
+
+        if (username !== user?.username) updatedUserDetails.username = username
+        if (email !== user?.email) updatedUserDetails.email = email
+        if (password && password !== '') {
+            updatedUserDetails.password = password
+        }
+        if (Object.keys(updatedUserDetails).length === 0) {
+            setErrorMessages(['No changes detected'])
             return
         }
 
-        if (data.message === 'Input validation passed') {
-            const updatedUserDetails = {}
-
-            if (username !== user.username) {
-                updatedUserDetails.username = username
+        Object.assign(updatedUserDetails, { username, email, password })
+        setPendingUserUpdate(updatedUserDetails)
+        navigate('/confirm', {
+            state: {
+                confirmationType: 'confirmUserUpdate',
+                updatedUserDetails
             }
-            if (email !== user.email) updatedUserDetails.email = email
-            if (password) updatedUserDetails.password = password
+        })
+        
+        // const data = await fetchWithRefresh(
+        //     `${backEndUrl}/api/v1/verifications/validate-user-info-update`,
+        //     'POST',
+        //     'application/json',
+        //     'include',
+        //     { id: user.id, username, email, password, reEnteredPassword }
+        // )
+        
+        // if (!data || typeof data !== 'object' || !data.message) {
+        //     setErrorMessages(['User info check failed'])
+        //     return
+        // }
 
-            setPendingUserUpdate(updatedUserDetails)
-            navigate('/confirm', {
-                state: {
-                    confirmationType: 'confirmUserUpdate',
-                    updatedUserDetails
-                }
-            })
-            return
-        }
+        // if (data.validationErrors?.length > 0) {
+        //     setErrorMessages(data.validationErrors)
+        //     return
+        // }
 
-        setErrorMessages([data.message])
+        // if (data.message === 'Input validation passed') {
+        //     const updatedUserDetails = {}
+
+        //     if (username !== user.username) {
+        //         updatedUserDetails.username = username
+        //     }
+        //     if (email !== user.email) updatedUserDetails.email = email
+        //     if (password) updatedUserDetails.password = password
+
+        //     setPendingUserUpdate(updatedUserDetails)
+        //     navigate('/confirm', {
+        //         state: {
+        //             confirmationType: 'confirmUserUpdate',
+        //             updatedUserDetails
+        //         }
+        //     })
+        //     return
+        // }
+
+        // setErrorMessages([data.message])
     }
     
     const handleSecondSubmit = useCallback(async updated => {
