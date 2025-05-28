@@ -306,7 +306,9 @@ describe('sessionController', () => {
                 {
                     httpOnly: true,
                     secure: process.env.NODE_ENV === 'production',
-                    sameSite: 'Strict'
+                    sameSite: process.env.NODE_ENV === 'production'
+                        ? 'none'
+                        : 'lax'
                 }
             )
             expect(mockResponse.clearCookie).toHaveBeenCalledWith(
@@ -314,7 +316,9 @@ describe('sessionController', () => {
                 {
                     httpOnly: true,
                     secure: process.env.NODE_ENV === 'production',
-                    sameSite: 'Strict'
+                    sameSite: process.env.NODE_ENV === 'production'
+                        ? 'none'
+                        : 'lax'
                 }
             )
             expect(mockResponse.status).toHaveBeenCalledWith(200)
@@ -366,7 +370,9 @@ describe('sessionController', () => {
                     httpOnly: true,
                     secure: expect.any(Boolean),
                     maxAge: 3600000,
-                    sameSite: 'Strict'
+                    sameSite: process.env.NODE_ENV === 'production'
+                        ? 'none'
+                        : 'lax'
                 })
             )
             expect(mockResponse.status).toHaveBeenCalledWith(200)
@@ -486,7 +492,9 @@ describe('sessionController', () => {
                     httpOnly: true,
                     secure: expect.any(Boolean),
                     maxAge: 3600000,
-                    sameSite: 'Strict'
+                    sameSite: process.env.NODE_ENV === 'production'
+                        ? 'none'
+                        : 'lax'
                 })
             )
             expect(mockResponse.cookie).toHaveBeenCalledWith(
@@ -496,7 +504,9 @@ describe('sessionController', () => {
                     httpOnly: true,
                     secure: expect.any(Boolean),
                     maxAge: 7 * 24 * 60 * 60 * 1000,
-                    sameSite: 'Strict'
+                    sameSite: process.env.NODE_ENV === 'production'
+                        ? 'none'
+                        : 'lax'
                 })
             )
             expect(mockResponse.status).toHaveBeenCalledWith(200)
