@@ -156,6 +156,7 @@ const TwoFactorPage = ({ backEndUrl }) => {
                         Scan this QR code with your authenticator app or enter
                         the code below manually:
                     </label>
+                    <br />
                     <img
                         src={qrCodeImage}
                         alt="2FA QR Code"

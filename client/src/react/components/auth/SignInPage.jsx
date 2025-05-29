@@ -53,6 +53,7 @@ const SignInPage = ({ backEndUrl }) => {
 
         if (!data || typeof data !== 'object' || !data.message) {
             isSigningIn.current = false
+            setHCaptchaToken(null)
             setErrorMessages(['Sign-in failed'])
             return
         }
@@ -74,6 +75,7 @@ const SignInPage = ({ backEndUrl }) => {
         }
 
         isSigningIn.current = false
+        setHCaptchaToken(null)
         setErrorMessages([data.message])
     }
 

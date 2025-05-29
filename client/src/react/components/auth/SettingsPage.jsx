@@ -318,8 +318,8 @@ const SettingsPage = ({ backEndUrl }) => {
                 onClick={() => navigate('/settings/two-factor-authentication')}
                 style={{ cursor: 'pointer', textDecoration: 'underline'}}
             >
-                Update 2FA
-            </span>  
+                Update 2FA settings
+            </span>
 
         deleteAccountDiv =
             <span
