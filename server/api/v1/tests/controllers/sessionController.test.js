@@ -49,7 +49,7 @@ describe('sessionController', () => {
 
             await sessionController.readSession(mockRequest, mockResponse)
             expect(dbConnection.execute).toHaveBeenCalledWith(
-                expect.stringContaining('SELECT id'),
+                expect.stringContaining('SELECT'),
                 [1]
             )
             expect(mockResponse.status).toHaveBeenCalledWith(200)
@@ -264,7 +264,7 @@ describe('sessionController', () => {
 
             expect(mockResponse.status).toHaveBeenCalledWith(200)
             expect(mockResponse.json).toHaveBeenCalledWith({
-                message: 'Please provide your 6-digit TOTP',
+                message: 'Please enter your 6-digit TOTP',
                 requireTotp: true,
                 userId: testUser.id
             })

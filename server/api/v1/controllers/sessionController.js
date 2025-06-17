@@ -23,7 +23,14 @@ const readSession = async (request, response) => {
         }
 
         const [sqlResult] = await dbConnection.execute(
-            `SELECT id, username, email, role, totp_auth_on
+            `SELECT
+                id,
+                username,
+                email,
+                role,
+                account_verified,
+                totp_auth_on,
+                created_at
             FROM users
             WHERE id = ?;`,
             [decryptedToken.id]
@@ -80,7 +87,8 @@ const createSession = async (request, response) => {
                 password,
                 role,
                 account_verified,
-                totp_auth_on
+                totp_auth_on,
+                created_at
             FROM users
             WHERE email = ?;`,
             [email]
@@ -110,7 +118,7 @@ const createSession = async (request, response) => {
 
         if (user.totp_auth_on) {
             return response.status(200).json({
-                message: 'Please provide your 6-digit TOTP',
+                message: 'Please enter your 6-digit TOTP',
                 requireTotp: true,
                 userId: user.id
             })
@@ -219,6 +227,9 @@ const verifyTotp = async (request, response) => {
                 username,
                 email,
                 role,
+                account_verified,
+                totp_auth_on,
+                created_at,
                 totp_auth_secret,
                 totp_auth_init_vector,
                 totp_auth_tag
