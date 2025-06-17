@@ -28,7 +28,8 @@ const verifyAccountByEmail = async (request, response) => {
             JOIN user_tokens ut
                 ON ut.user_id = u.id
             WHERE ut.token_type = 'account_verification'
-                AND ut.token_value = ?;`,
+                AND ut.token_value = ?
+                AND ut.used_at IS NULL;`,
             [token]
         )
 
@@ -398,7 +399,7 @@ const requestDeleteUser = async (request, response) => {
 
 const setTotpAuth = async (request, response) => {
     const { id, totpAuthOn, totpSecret, totpCode } = request.body    
-    
+
     if (!id) {
         console.error('`id: user.id` required in POST body')
         return response.status(400).json({ message: 'Error in request'})

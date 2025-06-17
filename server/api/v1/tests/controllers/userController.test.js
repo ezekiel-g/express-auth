@@ -124,13 +124,7 @@ describe('userController', () => {
             expect(mockResponse.status).toHaveBeenCalledWith(201)
             expect(mockResponse.json).toHaveBeenCalledWith({
                 message: 'Registered successfully — ' +
-                         'please check your email to confirm',
-                user: {
-                    id: 6,
-                    username: 'newuser',
-                    email: 'newuser@example.com',
-                    role: 'user'
-                }
+                         'please check your email to confirm'
             })
         })
 

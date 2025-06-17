@@ -74,7 +74,8 @@ const createUser = async (request, response) => {
         const tokenExpires = new Date(Date.now() + 60 * 60 * 1000)
         const salt = await bcryptjs.genSalt(10)
         const hashedPassword = await bcryptjs.hash(password, salt)
-        const [sqlResult] = await dbConnection.execute(
+
+        const [sqlInsert] = await dbConnection.execute(
             `INSERT INTO users (username, email, password, role)
             VALUES (?, ?, ?, ?);`,
             [username, email, hashedPassword, role]
@@ -93,7 +94,7 @@ const createUser = async (request, response) => {
                 created_at = CURRENT_TIMESTAMP,
                 used_at = NULL;`,
             [
-                sqlResult.insertId,
+                sqlInsert.insertId,
                 verificationToken,
                 tokenExpires
             ]
@@ -113,13 +114,6 @@ const createUser = async (request, response) => {
         return response.status(201).json({
             message: 'Registered successfully — ' +
                      'please check your email to confirm'
-            ,
-            user: {
-                id: sqlResult.insertId,
-                username,
-                email,
-                role
-            }
         })
     } catch (error) {
         return handleDbError(response, error)
@@ -193,7 +187,10 @@ const updateUser = async (request, response) => {
                 u.email,
                 u.password,
                 u.role,
-                u.email_pending, 
+                u.email_pending,
+                u.account_verified,
+                u.totp_auth_on,
+                u.created_at,
                 ut.token_value AS email_change_token, 
                 ut.expires_at AS token_expires
             FROM users u
@@ -320,10 +317,13 @@ const updateUser = async (request, response) => {
             message: mainSuccessMessage,
             successfulUpdates,
             user: {
-                id,
+                id: sqlSelect[0].id,
                 username: updatedUsername,
                 email: sqlSelect[0].email,
-                role: updatedRole
+                role: updatedRole,
+                account_verified: sqlSelect[0].account_verified,
+                totp_auth_on: sqlSelect[0].totp_auth_on,
+                created_at: sqlSelect[0].created_at 
             }
         })
     } catch (error) {
