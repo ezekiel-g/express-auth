@@ -117,6 +117,7 @@ describe('verificationController', () => {
             request.query = { token: 'invalidToken' }
 
             dbConnection.executeQuery.mockResolvedValueOnce([[]])
+            
             await verificationController.confirmEmailChange(request, response)
 
             expect(response.status).toHaveBeenCalledWith(400)
