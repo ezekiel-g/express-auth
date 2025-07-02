@@ -1,29 +1,46 @@
-import js from '@eslint/js'
-import globals from 'globals'
-
 export default [
-    { ignores: ['dist'] },
-    {
-        files: ['**/*.{js,ts}'],
-        languageOptions: {
-            ecmaVersion: 'latest',
-            globals: globals.node,
-            parserOptions: {
-                ecmaVersion: 'latest',
-                sourceType: 'module'
-            }
-        },
-        rules: {
-            ...js.configs.recommended.rules,
-            indent: ['error', 4],
-            semi: ['error', 'never'],
-            quotes: ['error', 'single'],
-            'comma-dangle': ['error', 'never'],
-            'arrow-parens': ['error', 'as-needed'],
-            'prefer-const': 'warn',
-            'no-var': 'error',
-            'no-unused-vars': 'warn',
-            'no-console': 'off'
-        }
-    }
-]
+  { ignores: ['dist'] },
+  {
+    files: ['**/*.{js,ts}'],
+    languageOptions: {
+      ecmaVersion: 'latest',
+      globals: { node: 'readonly' },
+      parserOptions: {
+        ecmaVersion: 'latest',
+        sourceType: 'module',
+      },
+    },
+    rules: {
+      'indent': ['error', 2],
+      'semi': ['error', 'always'],
+      'quotes': ['error', 'single'],
+      'comma-dangle': ['error', 'always-multiline'],
+      'space-before-function-paren': ['error', 'always'],
+      'object-curly-spacing': ['error', 'always'],
+      'padded-blocks': ['error', 'never'],
+      'max-len': ['error', 80],
+      'prefer-const': 'warn',
+      'prefer-template': 'error',
+      'consistent-return': 'error',
+      'no-param-reassign': ['error', { props: false }],
+      'no-else-return': 'error',
+      'prefer-destructuring': ['error', { object: true, array: false }],
+      'no-var': 'error',
+      'no-unused-vars': 'warn',
+      'no-shadow': 'error',
+      'no-console': 'off',
+      'no-restricted-syntax': ['error', 'WithStatement'],
+      'no-alert': 'warn',
+      // 'no-magic-numbers': ['warn', { ignoreArrayIndexes: true }],
+      'no-new': 'off',
+      'no-underscore-dangle': 'off',
+      // 'camelcase': 'error',
+      'linebreak-style': ['error', 'unix'],
+      'eol-last': ['error', 'always'],
+      'no-trailing-spaces': 'error',
+      'object-curly-newline': ['error', { consistent: true }],
+      'function-paren-newline': ['error', 'consistent'],
+      'arrow-parens': ['error', 'always'],
+    },
+  },
+];

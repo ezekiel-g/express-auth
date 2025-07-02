@@ -1,339 +1,372 @@
-import { describe, it, expect, beforeEach, afterEach, jest }
-    from '@jest/globals'
-import otplib from 'otplib'
-import qrcode from 'qrcode'
-import dbConnection from '../../db/dbConnection.js'
-import encryptionHelper from '../../util/encryptionHelper.js'
-import emailTransporter from '../../util/emailTransporter.js'
-import verificationController from '../../controllers/verificationController.js'
+import {
+  describe,
+  it,
+  expect,
+  beforeEach,
+  afterEach,
+  jest,
+} from '@jest/globals';
+import otplib from 'otplib';
+import qrcode from 'qrcode';
+import dbConnection from '../../db/dbConnection.js';
+import encryptionHelper from '../../util/encryptionHelper.js';
+import emailTransporter from '../../util/emailTransporter.js';
+import verificationController
+  from '../../controllers/verificationController.js';
 
-jest.mock('bcryptjs')
-jest.mock('jsonwebtoken')
+jest.mock('bcryptjs');
+jest.mock('jsonwebtoken');
 jest.mock('otplib', () => ({
-    authenticator: {
-        generateSecret: jest.fn(),
-        keyuri: jest.fn(),
-        verify: jest.fn()
-    }
-}))
-jest.mock('qrcode', () => ({ toDataURL: jest.fn() }))
-jest.mock('../../db/dbConnection.js')
-jest.mock('../../util/validateSession.js')
-jest.mock('../../util/encryptionHelper.js')
-jest.mock('../../util/emailTransporter.js')
+  authenticator: {
+    generateSecret: jest.fn(),
+    keyuri: jest.fn(),
+    verify: jest.fn(),
+  },
+}));
+jest.mock('qrcode', () => ({ toDataURL: jest.fn() }));
+jest.mock('../../db/dbConnection.js');
+jest.mock('../../util/validateSession.js');
+jest.mock('../../util/encryptionHelper.js');
+jest.mock('../../util/emailTransporter.js');
 jest.mock('nodemailer', () => ({
-    createTransport: jest.fn().mockReturnValue({
-        sendMail: jest.fn().mockResolvedValue(true)
-    })
-}))
+  createTransport: jest.fn().mockReturnValue({
+    sendMail: jest.fn().mockResolvedValue(true),
+  }),
+}));
 
 describe('verificationController', () => {
-    let request
-    let response
-    
-    beforeEach(() => {
-        request = {}
-        response = {
-            send: jest.fn(),
-            status: jest.fn().mockReturnThis(),
-            json: jest.fn().mockReturnThis()
-        }
+  let request;
+  let response;
 
-        jest.spyOn(console, 'error').mockImplementation(() => {})
-    })
+  beforeEach(() => {
+    request = {};
+    response = {
+      send: jest.fn(),
+      status: jest.fn().mockReturnThis(),
+      json: jest.fn().mockReturnThis(),
+    };
 
-    afterEach(() => { jest.clearAllMocks() })
+    jest.spyOn(console, 'error').mockImplementation(() => {});
+  });
 
-    describe('verifyAccountByEmail', () => {
-        it('verifies account successfully if token is valid', async () => {
-            request.query = { token: 'validToken' }
+  afterEach(() => {
+    jest.clearAllMocks();
+  });
 
-            dbConnection.executeQuery
-                .mockResolvedValueOnce([{
-                    id: 1,
-                    expires_at: new Date(new Date().getTime() + 10000)
-                }])
-                .mockResolvedValueOnce({})
-                .mockResolvedValueOnce({})
+  describe('verifyAccountByEmail', () => {
+    it('verifies account successfully if token is valid', async () => {
+      request.query = { token: 'validToken' };
 
-            await verificationController.verifyAccountByEmail(request, response)
+      dbConnection.executeQuery
+        .mockResolvedValueOnce([
+          {
+            id: 1,
+            expires_at: new Date(new Date().getTime() + 10000),
+          },
+        ])
+        .mockResolvedValueOnce({})
+        .mockResolvedValueOnce({});
 
-            expect(response.status).toHaveBeenCalledWith(200)
-            expect(response.json).toHaveBeenCalled()
-        })
+      await verificationController.verifyAccountByEmail(request, response);
 
-        it('returns error if token is invalid or missing', async () => {
-            request.query = { token: 'invalidToken' }
+      expect(response.status).toHaveBeenCalledWith(200);
+      expect(response.json).toHaveBeenCalled();
+    });
 
-            dbConnection.executeQuery.mockResolvedValueOnce([])
+    it('returns error if token is invalid or missing', async () => {
+      request.query = { token: 'invalidToken' };
 
-            await verificationController.verifyAccountByEmail(request, response)
+      dbConnection.executeQuery.mockResolvedValueOnce([]);
 
-            expect(response.status).toHaveBeenCalledWith(400)
-            expect(response.json).toHaveBeenCalledWith({
-                message: 'Invalid or expired token'
-            })
-        })        
+      await verificationController.verifyAccountByEmail(request, response);
 
-        it('returns error if token is expired', async () => {
-            request.query = { token: 'expiredToken' }
+      expect(response.status).toHaveBeenCalledWith(400);
+      expect(response.json).toHaveBeenCalledWith({
+        message: 'Invalid or expired token',
+      });
+    });
 
-            dbConnection.executeQuery.mockResolvedValueOnce([{
-                id: 1,
-                expires_at: new Date(new Date().getTime() - 60 * 60 * 1000)             
-            }])
+    it('returns error if token is expired', async () => {
+      request.query = { token: 'expiredToken' };
 
-            await verificationController.verifyAccountByEmail(request, response)
+      dbConnection.executeQuery.mockResolvedValueOnce([
+        {
+          id: 1,
+          expires_at: new Date(new Date().getTime() - 60 * 60 * 1000),
+        },
+      ]);
 
-            expect(response.status).toHaveBeenCalledWith(400)
-            expect(response.json).toHaveBeenCalled()
-        })
-    })
+      await verificationController.verifyAccountByEmail(request, response);
 
-    describe('confirmEmailChange', () => {
-        it('updates email successfully if token is valid ' +
-            'and not expired', async () => {
-            request.query = { token: 'validToken' }
+      expect(response.status).toHaveBeenCalledWith(400);
+      expect(response.json).toHaveBeenCalled();
+    });
+  });
 
-            dbConnection.executeQuery
-                .mockResolvedValueOnce([{
-                    id: 1,
-                    email: 'oldemail@example.com',
-                    email_pending: 'newemail@example.com',
-                    token_value: 'validToken',
-                    expires_at: new Date(new Date().getTime() + 60 * 60 * 1000)                    
-                }])
-                .mockResolvedValueOnce([{}])
-                .mockResolvedValueOnce([{}])
+  describe('confirmEmailChange', () => {
+    it(
+      'updates email successfully if token is valid ' + 'and not expired',
+      async () => {
+        request.query = { token: 'validToken' };
 
-            await verificationController.confirmEmailChange(request, response)
+        dbConnection.executeQuery
+          .mockResolvedValueOnce([
+            {
+              id: 1,
+              email: 'oldemail@example.com',
+              email_pending: 'newemail@example.com',
+              token_value: 'validToken',
+              expires_at: new Date(new Date().getTime() + 60 * 60 * 1000),
+            },
+          ])
+          .mockResolvedValueOnce([{}])
+          .mockResolvedValueOnce([{}]);
 
-            expect(response.status).toHaveBeenCalledWith(200)
-            expect(response.json).toHaveBeenCalled()
-            expect(emailTransporter.sendMail).toHaveBeenCalled()
-        })
-        
-        it('returns error if token is invalid or missing', async () => {
-            request.query = { token: 'invalidToken' }
+        await verificationController.confirmEmailChange(request, response);
 
-            dbConnection.executeQuery.mockResolvedValueOnce([[]])
-            
-            await verificationController.confirmEmailChange(request, response)
+        expect(response.status).toHaveBeenCalledWith(200);
+        expect(response.json).toHaveBeenCalled();
+        expect(emailTransporter.sendMail).toHaveBeenCalled();
+      },
+    );
 
-            expect(response.status).toHaveBeenCalledWith(400)
-            expect(response.json).toHaveBeenCalled()
-        })
-        
-        it('returns error if token is expired', async () => {
-            request.query = { token: 'expiredToken' }
-            
-            dbConnection.executeQuery.mockResolvedValueOnce([{
-                id: 1,
-                email: 'oldemail@example.com',
-                email_pending: 'newemail@example.com',
-                token_value: 'expiredToken',
-                expires_at: new Date(new Date().getTime() - 60 * 60 * 1000)                
-            }])
+    it('returns error if token is invalid or missing', async () => {
+      request.query = { token: 'invalidToken' };
 
-            await verificationController.confirmEmailChange(request, response)
+      dbConnection.executeQuery.mockResolvedValueOnce([[]]);
 
-            expect(response.status).toHaveBeenCalledWith(400)
-            expect(response.json).toHaveBeenCalled()
-        })
-    })
+      await verificationController.confirmEmailChange(request, response);
 
-    describe('getTotpSecret', () => {
-        it('returns totpSecret and qrCodeImage ' +
-            'if user found and request is valid', async () => {
-            const totpSecret = 'abcdef123456'
-            const totpUri = 'otpauth://totp/TestApp:user@example.com' +
-                            '?secret=abcdef123456'
-            const qrCodeImage = 'data:image/png;base64,encodedimage'
-            request.body = { id: 1 }
+      expect(response.status).toHaveBeenCalledWith(400);
+      expect(response.json).toHaveBeenCalled();
+    });
 
-            otplib.authenticator.generateSecret.mockReturnValue(totpSecret)
-            otplib.authenticator.keyuri.mockReturnValue(totpUri)
-            qrcode.toDataURL.mockResolvedValue(qrCodeImage)
-            dbConnection.executeQuery.mockResolvedValue([[{
-                email: 'user1@example.com'
-            }]])
-            
-            await verificationController.getTotpSecret(request, response)
+    it('returns error if token is expired', async () => {
+      request.query = { token: 'expiredToken' };
 
-            expect(response.status).toHaveBeenCalledWith(200)
-            expect(response.json).toHaveBeenCalled()
-        })
+      dbConnection.executeQuery.mockResolvedValueOnce([
+        {
+          id: 1,
+          email: 'oldemail@example.com',
+          email_pending: 'newemail@example.com',
+          token_value: 'expiredToken',
+          expires_at: new Date(new Date().getTime() - 60 * 60 * 1000),
+        },
+      ]);
 
-        it('returns error if id is missing', async () => {
-            request.body = {}
+      await verificationController.confirmEmailChange(request, response);
 
-            await verificationController.getTotpSecret(request, response)
+      expect(response.status).toHaveBeenCalledWith(400);
+      expect(response.json).toHaveBeenCalled();
+    });
+  });
 
-            expect(response.status).toHaveBeenCalledWith(400)
-            expect(response.json).toHaveBeenCalled()
-        })
-    })
+  describe('getTotpSecret', () => {
+    it(
+      'returns totpSecret and qrCodeImage ' +
+        'if user found and request is valid',
+      async () => {
+        const totpSecret = 'abcdef123456';
+        const totpUri =
+          'otpauth://totp/TestApp:user@example.com' + '?secret=abcdef123456';
+        const qrCodeImage = 'data:image/png;base64,encodedimage';
+        request.body = { id: 1 };
 
-    describe('resendVerificationEmail', () => {
-        it('sends verification email if user is not verified', async () => {
-            request.body = { email: 'user2@example.com' }
+        otplib.authenticator.generateSecret.mockReturnValue(totpSecret);
+        otplib.authenticator.keyuri.mockReturnValue(totpUri);
+        qrcode.toDataURL.mockResolvedValue(qrCodeImage);
+        dbConnection.executeQuery.mockResolvedValue([
+          [
+            {
+              email: 'user1@example.com',
+            },
+          ],
+        ]);
 
-            dbConnection.executeQuery.mockResolvedValue([{
-                id: 2,
-                username: 'User2',
-                account_verified: 0
-            }])
-            crypto.randomBytes =
-                jest.fn().mockReturnValue({ toString: () => 'verificationToken' })
-            emailTransporter.sendMail = jest.fn()
+        await verificationController.getTotpSecret(request, response);
 
-            await verificationController.resendVerificationEmail(
-                request,
-                response
-            )
+        expect(response.status).toHaveBeenCalledWith(200);
+        expect(response.json).toHaveBeenCalled();
+      },
+    );
 
-            expect(response.status).toHaveBeenCalledWith(200)
-            expect(response.json).toHaveBeenCalled()
-            expect(emailTransporter.sendMail).toHaveBeenCalled()
-        })
+    it('returns error if id is missing', async () => {
+      request.body = {};
 
-        it('returns success message if user already verified', async () => {
-            request.body = { email: 'user1@example.com' }
+      await verificationController.getTotpSecret(request, response);
 
-            dbConnection.executeQuery.mockResolvedValue([{
-                id: 1,
-                username: 'User1',
-                account_verified: 1
-            }])
+      expect(response.status).toHaveBeenCalledWith(400);
+      expect(response.json).toHaveBeenCalled();
+    });
+  });
 
-            await verificationController.resendVerificationEmail(
-                request,
-                response
-            )
+  describe('resendVerificationEmail', () => {
+    it('sends verification email if user is not verified', async () => {
+      request.body = { email: 'user2@example.com' };
 
-            expect(response.status).toHaveBeenCalledWith(200)
-            expect(response.json).toHaveBeenCalled()
-            expect(emailTransporter.sendMail).not.toHaveBeenCalled()
-        })
-    })
+      dbConnection.executeQuery.mockResolvedValue([
+        {
+          id: 2,
+          username: 'User2',
+          account_verified: 0,
+        },
+      ]);
+      crypto.randomBytes = jest
+        .fn()
+        .mockReturnValue({ toString: () => 'verificationToken' });
+      emailTransporter.sendMail = jest.fn();
 
-    describe('sendPasswordResetEmail', () => {
-        it('sends password reset email if email is ' +
-            'associated with an account', async () => {
-            request.body = { email: 'user1@example.com' }
+      await verificationController.resendVerificationEmail(request, response);
 
-            dbConnection.executeQuery
-                .mockResolvedValue([[{ id: 1, username: 'User1' }]])
-            crypto.randomBytes =
-                jest.fn().mockReturnValue({ toString: () => 'validToken' })
-            emailTransporter.sendMail = jest.fn()
+      expect(response.status).toHaveBeenCalledWith(200);
+      expect(response.json).toHaveBeenCalled();
+      expect(emailTransporter.sendMail).toHaveBeenCalled();
+    });
 
-            await verificationController.sendPasswordResetEmail(
-                request,
-                response
-            )
+    it('returns success message if user already verified', async () => {
+      request.body = { email: 'user1@example.com' };
 
-            expect(response.status).toHaveBeenCalledWith(200)
-            expect(response.json).toHaveBeenCalledWith({
-                message: expect.stringContaining('If the email address is')
-            })
-            expect(emailTransporter.sendMail).toHaveBeenCalled()
-        })
-    })
+      dbConnection.executeQuery.mockResolvedValue([
+        {
+          id: 1,
+          username: 'User1',
+          account_verified: 1,
+        },
+      ]);
 
-    describe('requestDeleteUser', () => {
-        it('sends account deletion confirmation email if email ' +
-            'is associated with an account', async () => {
-            request.body = { id: 5 }
-            request.cookies = { accessToken: 'validToken' }
+      await verificationController.resendVerificationEmail(request, response);
 
-            dbConnection.executeQuery.mockResolvedValue([[{
-                id: 5,
-                username: 'User1',
-                email: 'user1@example.com'
-            }]])
+      expect(response.status).toHaveBeenCalledWith(200);
+      expect(response.json).toHaveBeenCalled();
+      expect(emailTransporter.sendMail).not.toHaveBeenCalled();
+    });
+  });
 
-            crypto.randomBytes.mockReturnValue({ toString: () => 'validToken' })
-            emailTransporter.sendMail.mockResolvedValue(true)
+  describe('sendPasswordResetEmail', () => {
+    it(
+      'sends password reset email if email is ' + 'associated with an account',
+      async () => {
+        request.body = { email: 'user1@example.com' };
 
-            await verificationController.requestDeleteUser(request, response)
+        dbConnection.executeQuery.mockResolvedValue([
+          [{ id: 1, username: 'User1' }],
+        ]);
+        crypto.randomBytes = jest
+          .fn()
+          .mockReturnValue({ toString: () => 'validToken' });
+        emailTransporter.sendMail = jest.fn();
 
-            expect(response.status).toHaveBeenCalledWith(200)
-            expect(response.json).toHaveBeenCalledWith({
-                message: expect.stringContaining('Account deletion requested')
-            })
-            expect(emailTransporter.sendMail).toHaveBeenCalled()
-        })
-    })
+        await verificationController.sendPasswordResetEmail(request, response);
 
-    describe('setTotpAuth', () => {
-        it('enables 2FA with valid code', async () => {
-            request.body = {
-                id: 1,
-                totpAuthOn: 1,
-                totpSecret: 'SECRET',
-                totpCode: '123456'
-            }
+        expect(response.status).toHaveBeenCalledWith(200);
+        expect(response.json).toHaveBeenCalledWith({
+          message: expect.stringContaining('If the email address is'),
+        });
+        expect(emailTransporter.sendMail).toHaveBeenCalled();
+      },
+    );
+  });
 
-            otplib.authenticator.check = jest.fn().mockReturnValue(true)
+  describe('requestDeleteUser', () => {
+    it(
+      'sends account deletion confirmation email if email ' +
+        'is associated with an account',
+      async () => {
+        request.body = { id: 5 };
+        request.cookies = { accessToken: 'validToken' };
 
-            encryptionHelper.encryptTotpSecret.mockReturnValue({
-                encryptedTotpSecret: 'encryptedSecret',
-                initVector: 'initVector',
-                authTag: 'authTag'
-            })
+        dbConnection.executeQuery.mockResolvedValue([
+          [
+            {
+              id: 5,
+              username: 'User1',
+              email: 'user1@example.com',
+            },
+          ],
+        ]);
 
-            await verificationController.setTotpAuth(request, response)
+        crypto.randomBytes.mockReturnValue({ toString: () => 'validToken' });
+        emailTransporter.sendMail.mockResolvedValue(true);
 
-            expect(dbConnection.executeQuery).toHaveBeenCalledWith(
-                expect.stringContaining('UPDATE users'),
-                ['encryptedSecret', 'initVector', 'authTag', 1]
-            )
-            expect(response.status).toHaveBeenCalledWith(200)
-            expect(response.json).toHaveBeenCalled()
-        })
+        await verificationController.requestDeleteUser(request, response);
 
-        it('disables 2FA when totpAuthOn is false', async () => {
-            request.body = { id: 1, totpAuthOn: false }
+        expect(response.status).toHaveBeenCalledWith(200);
+        expect(response.json).toHaveBeenCalledWith({
+          message: expect.stringContaining('Account deletion requested'),
+        });
+        expect(emailTransporter.sendMail).toHaveBeenCalled();
+      },
+    );
+  });
 
-            await verificationController.setTotpAuth(request, response)
+  describe('setTotpAuth', () => {
+    it('enables 2FA with valid code', async () => {
+      request.body = {
+        id: 1,
+        totpAuthOn: 1,
+        totpSecret: 'SECRET',
+        totpCode: '123456',
+      };
 
-            expect(dbConnection.executeQuery).toHaveBeenCalled()
-            expect(response.status).toHaveBeenCalledWith(200)
-            expect(response.json).toHaveBeenCalledWith({
-                message: 'Two-factor authentication disabled successfully'
-            })
-        })
+      otplib.authenticator.check = jest.fn().mockReturnValue(true);
 
-        it('returns error if TOTP code is invalid', async () => {
-            request.body = {
-                id: 1,
-                totpAuthOn: 1,
-                totpSecret: 'SECRET',
-                totpCode: '123456'
-            }
+      encryptionHelper.encryptTotpSecret.mockReturnValue({
+        encryptedTotpSecret: 'encryptedSecret',
+        initVector: 'initVector',
+        authTag: 'authTag',
+      });
 
-            otplib.authenticator.check = jest.fn().mockReturnValue(false)
+      await verificationController.setTotpAuth(request, response);
 
-            await verificationController.setTotpAuth(request, response)
+      expect(dbConnection.executeQuery).toHaveBeenCalledWith(
+        expect.stringContaining('UPDATE users'),
+        ['encryptedSecret', 'initVector', 'authTag', 1],
+      );
+      expect(response.status).toHaveBeenCalledWith(200);
+      expect(response.json).toHaveBeenCalled();
+    });
 
-            expect(response.status).toHaveBeenCalledWith(400)
-            expect(response.json).toHaveBeenCalled()
-        })
-    })
+    it('disables 2FA when totpAuthOn is false', async () => {
+      request.body = { id: 1, totpAuthOn: false };
 
-    describe('resetPassword', () => {
-        it('resets the password successfully', async () => {
-            request.body = {
-                email: 'user1@example.com',
-                newPassword: 'NewPassword&123456789',
-                token: 'validToken'
-            }
+      await verificationController.setTotpAuth(request, response);
 
-            await verificationController.resetPassword(request, response)
+      expect(dbConnection.executeQuery).toHaveBeenCalled();
+      expect(response.status).toHaveBeenCalledWith(200);
+      expect(response.json).toHaveBeenCalledWith({
+        message: 'Two-factor authentication disabled successfully',
+      });
+    });
 
-            expect(response.status).toHaveBeenCalledWith(200)
-            expect(response.json).toHaveBeenCalled()
-        })        
-    })
-})
+    it('returns error if TOTP code is invalid', async () => {
+      request.body = {
+        id: 1,
+        totpAuthOn: 1,
+        totpSecret: 'SECRET',
+        totpCode: '123456',
+      };
+
+      otplib.authenticator.check = jest.fn().mockReturnValue(false);
+
+      await verificationController.setTotpAuth(request, response);
+
+      expect(response.status).toHaveBeenCalledWith(400);
+      expect(response.json).toHaveBeenCalled();
+    });
+  });
+
+  describe('resetPassword', () => {
+    it('resets the password successfully', async () => {
+      request.body = {
+        email: 'user1@example.com',
+        newPassword: 'NewPassword&123456789',
+        token: 'validToken',
+      };
+
+      await verificationController.resetPassword(request, response);
+
+      expect(response.status).toHaveBeenCalledWith(200);
+      expect(response.json).toHaveBeenCalled();
+    });
+  });
+});
